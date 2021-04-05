@@ -135,10 +135,10 @@ pub fn verify<R>(
     n: usize,
     t: usize,
     public_keys: &[PublicKey],
-    indices: &[usize],
     shares: &[Share],
     commitments: &[Commitment],
-    proof: &[Proof],
+    private_commitments: &[Commitment],
+    private_proof: &[Proof],
     rng: &mut R,
 ) -> bool
 where
@@ -177,7 +177,7 @@ where
         return false;
     }
     for i in 0..t {
-        if !verify_proof(commitments[i], proof[indices[i]]) {
+        if !verify_proof(private_commitments[i], private_proof[i]) {
             return false;
         }
     }
@@ -249,15 +249,14 @@ mod tests {
             &messages.iter().map(|m| m.2.clone()).collect(),
             &messages.iter().map(|m| m.3.clone()).collect(),
         );
-        let indices: Vec<_> = (0..T).collect();
         for i in 0..N {
             assert!(verify(
                 N,
                 T,
                 &public_keys,
-                &indices,
                 &aggr.0,
                 &aggr.1,
+                &messages.iter().map(|m| m.2[i]).collect::<Vec<_>>(),
                 &aggr.2[i],
                 rng
             ));
