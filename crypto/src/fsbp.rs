@@ -53,12 +53,15 @@ where
 {
     let w = Scalar::rand(rng);
     let a = G2::prime_subgroup_generator().mul(w).into_affine();
-    let c = Scalar::from_random_bytes(&ser_and_hash(&(ArkToSerde(gs), ArkToSerde(a)))).unwrap();
+    let mut rngs: StdRng = SeedableRng::from_seed(ser_and_hash(&(ArkToSerde(gs), ArkToSerde(a))));
+    let c = Scalar::rand(&mut rngs);
     Proof { a: a, r: s + c * w }
 }
 
 pub fn verify_proof(gs: G2, proof: Proof) -> bool {
-    let c = Scalar::from_random_bytes(&ser_and_hash(&(ArkToSerde(gs), ArkToSerde(proof.a)))).unwrap();
+    let mut rng: StdRng =
+        SeedableRng::from_seed(ser_and_hash(&(ArkToSerde(gs), ArkToSerde(proof.a))));
+    let c = Scalar::rand(&mut rng);
     G2::prime_subgroup_generator().mul(proof.r).into_affine() == gs + proof.a.mul(c).into_affine()
 }
 
@@ -67,7 +70,7 @@ pub fn generate_shares<R>(
     t: usize,
     public_keys: &[PublicKey],
     rng: &mut R,
-) -> (Secret, Vec<Share>, Vec<Commitment>)
+) -> (Secret, Vec<Share>, Vec<Commitment>, Vec<Proof>)
 where
     R: Rng + ?Sized,
 {
@@ -85,6 +88,16 @@ where
     let evaluations: Vec<Scalar> = (0..n)
         .map(|i| polynomial.evaluate(&Scalar::from(i as u64 + 1)))
         .collect();
+    let commitments: Vec<G2> = (0..n)
+        .map(|i| {
+            G2::prime_subgroup_generator()
+                .mul(evaluations[i])
+                .into_affine()
+        })
+        .collect();
+    let proof: Vec<Proof> = (0..n)
+        .map(|i| generate_proof(evaluations[i], commitments[i], rng))
+        .collect();
     (
         Bls12_381::pairing(
             G1::prime_subgroup_generator().mul(secret_scalar),
@@ -93,12 +106,161 @@ where
         (0..n)
             .map(|i| public_keys[i].mul(evaluations[i]).into_affine())
             .collect(),
+        commitments,
+        proof,
+    )
+}
+
+pub fn aggregate(
+    n: usize,
+    t: usize,
+    shares: &Vec<Vec<Share>>,
+    commitments: &Vec<Vec<Commitment>>,
+    proof: &Vec<Vec<Proof>>,
+) -> (Vec<Share>, Vec<Commitment>, Vec<Vec<Proof>>) {
+    (
         (0..n)
-            .map(|i| {
-                G2::prime_subgroup_generator()
-                    .mul(evaluations[i])
-                    .into_affine()
-            })
+            .map(|i| (0..t).fold(G1::zero(), |acc, j| acc + shares[j][i]))
+            .collect(),
+        (0..n)
+            .map(|i| (0..t).fold(G2::zero(), |acc, j| acc + commitments[j][i]))
+            .collect(),
+        (0..n)
+            .map(|i| (0..t).map(|j| proof[j][i]).collect())
             .collect(),
     )
+}
+
+pub fn verify<R>(
+    n: usize,
+    t: usize,
+    public_keys: &[PublicKey],
+    indices: &[usize],
+    shares: &[Share],
+    commitments: &[Commitment],
+    proof: &[Proof],
+    rng: &mut R,
+) -> bool
+where
+    R: Rng + ?Sized,
+{
+    for i in 0..n {
+        if Bls12_381::pairing(shares[i], G2::prime_subgroup_generator())
+            != Bls12_381::pairing(public_keys[i], commitments[i])
+        {
+            return false;
+        }
+    }
+    let vec: Vec<Scalar> = (0..n - t - 1).map(|_| Scalar::rand(rng)).collect();
+    let polynomial = Polynomial::from_coefficients_vec(vec);
+    let ind: Vec<_> = (0..n).map(|i| (i, Scalar::from(i as u64 + 1))).collect();
+    let codeword: Vec<Scalar> = ind
+        .iter()
+        .map(|&(i, scalar_i)| {
+            ind.iter()
+                .map(|&(j, scalar_j)| {
+                    if j == i {
+                        Scalar::one()
+                    } else {
+                        (scalar_i - scalar_j).inverse().unwrap()
+                    }
+                })
+                .fold(Scalar::one(), |v, x| v * x)
+                * polynomial.evaluate(&scalar_i)
+        })
+        .collect();
+    if (0..n)
+        .map(|i| commitments[i].mul(codeword[i]))
+        .fold(G2P::zero(), |acc, c| acc + c)
+        != G2P::zero()
+    {
+        return false;
+    }
+    for i in 0..t {
+        if !verify_proof(commitments[i], proof[indices[i]]) {
+            return false;
+        }
+    }
+    true
+}
+
+pub fn decrypt_share(secret_key: SecretKey, share: Share) -> Share {
+    share.mul(secret_key.inverse().unwrap()).into_affine()
+}
+
+pub fn verify_share(decrypted_share: Share, commitment: Commitment) -> bool {
+    Bls12_381::pairing(decrypted_share, G2::prime_subgroup_generator())
+        == Bls12_381::pairing(G1::prime_subgroup_generator(), commitment)
+}
+
+pub fn reconstruct(n: usize, decrypted_shares: &[Option<Share>]) -> Secret {
+    let valid_share_indices: Vec<_> = (0..n)
+        .filter(|&i| decrypted_shares[i].is_some())
+        .map(|i| (i, Scalar::from(i as u64 + 1)))
+        .collect();
+    let secret = valid_share_indices
+        .iter()
+        .map(|&(i, scalar_i)| {
+            decrypted_shares[i].unwrap().mul(
+                valid_share_indices
+                    .iter()
+                    .map(|&(j, scalar_j)| {
+                        if j == i {
+                            Scalar::one()
+                        } else {
+                            scalar_j * (scalar_j - scalar_i).inverse().unwrap()
+                        }
+                    })
+                    .fold(Scalar::one(), |lambda, x| lambda * x),
+            )
+        })
+        .fold(G1::zero().into_projective(), |acc, x| acc + x)
+        .into_affine();
+    Bls12_381::pairing(secret, G2::prime_subgroup_generator())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::fsbp::*;
+
+    const N: usize = 16;
+    const T: usize = 12;
+
+    #[test]
+    fn verify_proof_test() {
+        let rng = &mut std_rng();
+        let s = Scalar::rand(rng);
+        let gs = G2::prime_subgroup_generator().mul(s).into_affine();
+        assert!(verify_proof(gs, generate_proof(s, gs, rng)));
+    }
+
+    #[test]
+    fn fsbp_test() {
+        let rng = &mut std_rng();
+        let keys: Vec<(SecretKey, PublicKey)> = (0..N).map(|_| generate_keypair(rng)).collect();
+        let public_keys: Vec<PublicKey> = (0..N).map(|i| keys[i].1).collect();
+        let messages: Vec<_> = (0..T)
+            .map(|_| generate_shares(N, T, &public_keys, rng))
+            .collect();
+        let aggr = aggregate(
+            N,
+            T,
+            &messages.iter().map(|m| m.1.clone()).collect(),
+            &messages.iter().map(|m| m.2.clone()).collect(),
+            &messages.iter().map(|m| m.3.clone()).collect(),
+        );
+        let indices: Vec<_> = (0..T).collect();
+        for i in 0..N {
+            assert!(verify(
+                N,
+                T,
+                &public_keys,
+                &indices,
+                &aggr.0,
+                &aggr.1,
+                &aggr.2[i],
+                rng
+            ));
+        }
+    }
 }
