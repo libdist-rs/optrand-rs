@@ -36,3 +36,7 @@ harness = false
 [[bench]]
 name = "bench_bi"
 harness = false
+
+[[bench]]
+name = "bench_fsbp"
+harness = false
