@@ -2,7 +2,7 @@
 // protocol.
 
 use clap::{load_yaml, App};
-use config::{Client, Node};
+use config::Node;
 use crypto::rand::{rngs::StdRng, SeedableRng};
 use crypto::Algorithm;
 use crypto::UniformRand;
@@ -55,17 +55,11 @@ fn main() {
         .value_of("target")
         .expect("target directory for the config not specified");
     let payload: usize = m.value_of("payload").unwrap_or("0").parse().unwrap();
-    let mut client = Client::new();
-    client.block_size = blocksize;
-    client.crypto_alg = t.clone();
-    client.num_nodes = num_nodes;
-    client.num_faults = num_faults;
-
+    
     let mut node: Vec<Node> = Vec::with_capacity(num_nodes);
 
     let mut pk = HashMap::new();
     let mut ip = HashMap::new();
-    let mut bi_pp = HashMap::new();
 
     for i in 0..num_nodes {
         node.push(Node::new());
@@ -96,17 +90,13 @@ fn main() {
             i as Replica,
             format!("{}:{}", "127.0.0.1", base_port + (i as u16)),
         );
-        client.net_map.insert(
-            i as Replica,
-            format!("127.0.0.1:{}", client_base_port + (i as u16)),
-        );
 
-        node[i].bi_p =
-            Some(crypto::Biaccumulator381::setup(num_nodes, &mut StdRng::from_entropy()).unwrap());
-        bi_pp.insert(
-            i as Replica,
-            node[i].bi_p.as_ref().unwrap().get_public_params(),
-        );
+        // node[i].bi_p =
+        //     Some(crypto::Biaccumulator381::setup(num_nodes, &mut StdRng::from_entropy()).unwrap());
+        // bi_pp.insert(
+        //     i as Replica,
+        //     node[i].bi_p.as_ref().unwrap().get_public_params(),
+        // );
     }
 
     let rng = &mut StdRng::from_entropy();
@@ -115,8 +105,8 @@ fn main() {
     for i in 0..num_nodes {
         node[i].pk_map = pk.clone();
         node[i].net_map = ip.clone();
-        node[i].bi_pp_map = bi_pp.clone();
-        node[i].rand_beacon_parameter = Some(rand_beacon_parameter.clone());
+        // node[i].bi_pp_map = bi_pp.clone();
+        // node[i].rand_beacon_parameter = Some(rand_beacon_parameter.clone());
     }
 
     for i in 0..num_nodes {
@@ -176,8 +166,6 @@ fn main() {
         node[i].rand_beacon_shares = vec;
     }
 
-    client.server_pk = pk;
-
     // Write all the files
     for i in 0..num_nodes {
         match out {
@@ -201,28 +189,4 @@ fn main() {
         }
         node[i].validate().expect("failed to validate node config");
     }
-
-    // Write the client file
-    match out {
-        "json" => {
-            let filename = format!("{}/client.json", target);
-            write_json(filename, &client);
-        }
-        "binary" => {
-            let filename = format!("{}/client.dat", target);
-            write_bin(filename, &client);
-        }
-        "toml" => {
-            let filename = format!("{}/client.toml", target);
-            write_toml(filename, &client);
-        }
-        "yaml" => {
-            let filename = format!("{}/client.yml", target);
-            write_yaml(filename, &client);
-        }
-        _ => (),
-    }
-    client
-        .validate()
-        .expect("failed to validate the client config");
 }

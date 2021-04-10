@@ -19,10 +19,10 @@ use types::Replica;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Node {
-    // Node network config
+    // Network config
     pub net_map: HashMap<Replica, String>,
 
-    // protocol details
+    // Synchronous protocol details
     pub delta: u64,
     pub id: Replica,
     pub num_nodes: usize,
@@ -31,16 +31,15 @@ pub struct Node {
     pub client_port: u16,
     pub payload: usize,
 
-    // Crypto primitives
+    // Authentication primitives
     pub crypto_alg: Algorithm,
     pub pk_map: HashMap<Replica, Vec<u8>>,
     pub secret_key_bytes: Vec<u8>,
 
-    // Biaccumulator setup
-    pub bi_pp_map: HashMap<Replica, crypto::EVSSPublicParams381>,
-    pub bi_p: Option<crypto::EVSSParams381>,
+    // PVSS config
+    // TODO
 
-    pub rand_beacon_parameter: Option<crypto::EVSSParams381>,
+    // Beacon data structures
     pub rand_beacon_queue: HashMap<Replica, std::collections::VecDeque<crypto::EVSSShare381>>,
 
     pub rand_beacon_shares: Vec<(Vec<std::collections::VecDeque<crypto::EVSSShare381>>, Vec<crypto::EVSSCommit381>)>,
@@ -110,9 +109,9 @@ impl Node {
             pk_map: HashMap::new(),
             secret_key_bytes: Vec::new(),
             payload: 0,
-            bi_pp_map: HashMap::new(),
-            bi_p: None,
-            rand_beacon_parameter: None,
+            // bi_pp_map: HashMap::new(),
+            // bi_p: None,
+            // rand_beacon_parameter: None,
             rand_beacon_queue: HashMap::new(),
             rand_beacon_shares: Vec::new(),
         }

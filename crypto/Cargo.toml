@@ -21,17 +21,10 @@ ark-poly-commit = { version = "0.2", default-features = false }
 
 ark-std = { version = "0.2", default-features = false }
 ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
+merkletree = "0.21"
 
 [dev-dependencies]
 criterion = "0.3"
-
-[[bench]]
-name = "bench_pvss"
-harness = false
-
-[[bench]]
-name = "bench_evss"
-harness = false
 
 [[bench]]
 name = "bench_bi"

@@ -57,6 +57,7 @@ mod tests {
 
 pub fn get_size(num_nodes: Replica) -> Replica {
     let mut n: Replica = 1;
+    // num_nodes.next_power_of_two(num_nodes).unwrap()
     while 1 << n < num_nodes {
         n += 1;
     }

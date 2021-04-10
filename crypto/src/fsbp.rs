@@ -32,15 +32,18 @@ pub struct Proof {
     pub r: Scalar,
 }
 
+pub struct Keypair (pub SecretKey, pub PublicKey);
+
 pub fn std_rng() -> StdRng {
     StdRng::from_entropy()
 }
 
-pub fn generate_keypair<R>(rng: &mut R) -> (SecretKey, PublicKey)
+pub fn generate_keypair<R>(rng: &mut R) -> Keypair
 where
     R: Rng + ?Sized,
 {
     let secret = Scalar::rand(rng);
+    Keypair
     (
         secret,
         G1::prime_subgroup_generator().mul(secret).into_affine(),
@@ -55,7 +58,7 @@ where
     let a = G2::prime_subgroup_generator().mul(w).into_affine();
     let mut rngs: StdRng = SeedableRng::from_seed(ser_and_hash(&(ArkToSerde(gs), ArkToSerde(a))));
     let c = Scalar::rand(&mut rngs);
-    Proof { a: a, r: s + c * w }
+    Proof { a, r: s + c * w }
 }
 
 pub fn verify_proof(gs: G2, proof: Proof) -> bool {
@@ -237,7 +240,7 @@ mod tests {
     #[test]
     fn fsbp_test() {
         let rng = &mut std_rng();
-        let keys: Vec<(SecretKey, PublicKey)> = (0..N).map(|_| generate_keypair(rng)).collect();
+        let keys: Vec<_> = (0..N).map(|_| generate_keypair(rng)).collect();
         let public_keys: Vec<PublicKey> = (0..N).map(|i| keys[i].1).collect();
         let messages: Vec<_> = (0..T)
             .map(|_| generate_shares(N, T, &public_keys, rng))

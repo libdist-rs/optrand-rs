@@ -17,7 +17,7 @@ pub fn fsbp_generation(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
             b.iter(|| {
-                let keys: Vec<(SecretKey, PublicKey)> =
+                let keys: Vec<_> =
                     (0..n).map(|_| generate_keypair(rng)).collect();
                 let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
                 generate_shares(n, t, &public_keys, rng)
@@ -33,7 +33,7 @@ pub fn fsbp_aggregation(c: &mut Criterion) {
     for &n in &TEST_POINTS {
         let rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n + 1) / 2;
-        let keys: Vec<(SecretKey, PublicKey)> = (0..n).map(|_| generate_keypair(rng)).collect();
+        let keys: Vec<_> = (0..n).map(|_| generate_keypair(rng)).collect();
         let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
         let generated: Vec<_> = (0..t)
             .map(|_| generate_shares(n, t, &public_keys, rng))
@@ -60,7 +60,7 @@ pub fn fsbp_proof_verification(c: &mut Criterion) {
     for &n in &TEST_POINTS {
         let rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n + 1) / 2;
-        let keys: Vec<(SecretKey, PublicKey)> = (0..n).map(|_| generate_keypair(rng)).collect();
+        let keys: Vec<_> = (0..n).map(|_| generate_keypair(rng)).collect();
         let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
         let generated: Vec<_> = (0..t)
             .map(|_| generate_shares(n, t, &public_keys, rng))
@@ -98,7 +98,7 @@ pub fn fsbp_share_verification(c: &mut Criterion) {
     for &n in &TEST_POINTS {
         let rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n + 1) / 2;
-        let keys: Vec<(SecretKey, PublicKey)> = (0..n).map(|_| generate_keypair(rng)).collect();
+        let keys: Vec<_> = (0..n).map(|_| generate_keypair(rng)).collect();
         let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
         let (_, shares, commitments, _) = generate_shares(n, t, &public_keys, rng);
         let decrypted_shares: Vec<Share> = (0..n)
@@ -122,7 +122,7 @@ pub fn fsbp_reconstruction(c: &mut Criterion) {
     for &n in &TEST_POINTS {
         let rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n + 1) / 2;
-        let keys: Vec<(SecretKey, PublicKey)> = (0..n).map(|_| generate_keypair(rng)).collect();
+        let keys: Vec<_> = (0..n).map(|_| generate_keypair(rng)).collect();
         let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
         let (_, shares, _, _) = generate_shares(n, t, &public_keys, rng);
         let decrypted_shares: Vec<_> = (0..n)

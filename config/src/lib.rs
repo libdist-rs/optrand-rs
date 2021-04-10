@@ -1,14 +1,3 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-
-mod client;
-pub use client::*;
-
 mod node;
 pub use node::*;
 
