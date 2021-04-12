@@ -17,11 +17,11 @@ pub struct AggregatePVSS {
     /// encs contains the combined encryptions c := (c1, c2, ..., cn)
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    encs: Vec<Encryptions>,
+    pub encs: Vec<Encryptions>,
     /// comms contains the combined commitments v := (v1, v2, ..., vn)
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    comms: Vec<Commitment>,
+    pub(crate) comms: Vec<Commitment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,11 +33,11 @@ pub struct DecompositionProof {
     /// Constituent vi
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    comms: Vec<Commitment>,
+    pub(crate) comms: Vec<Commitment>,
     /// Constituent ci
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    encs: Vec<Encryptions>,
+    pub(crate) encs: Vec<Encryptions>,
     /// A vector of dleq proofs for all constituent vi and ci for [n]
     proof: Vec<DleqProof>,
 }
@@ -251,7 +251,7 @@ impl DbsContext {
     /// Decrypt an encryption meant for me
     /// OPTIMIZATION - Pairing is expensive, NIZKs are cheap
     /// Send a NIZK proof to avoid pairing checks
-    pub fn decrypt_share<R>(&self, e: Encryptions, dss_sk: &crypto_lib::Keypair, rng:&mut R) -> (Share, DleqProofSameG1) 
+    pub fn decrypt_share<R>(&self, e: &Encryptions, dss_sk: &crypto_lib::Keypair, rng:&mut R) -> (Share, DleqProofSameG1) 
     where R: Rng+?Sized,
     {
         // OPTIMIZATION - Precompute my_key.inverse

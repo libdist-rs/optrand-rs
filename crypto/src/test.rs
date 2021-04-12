@@ -174,7 +174,7 @@ mod dbs_tests {
         
         for j in 0..n {
             let (d,pi) = 
-            dbs_ctx[j].decrypt_share(c[j], &dss_kpair[j], &mut rng);
+            dbs_ctx[j].decrypt_share(&c[j], &dss_kpair[j], &mut rng);
             assert_eq!(None, 
                 dbs_ctx[0].verify_share(j, &d, &c[j], &pi, &dss_pk[j])
             );
@@ -211,7 +211,7 @@ mod dbs_tests {
             dbs_ctx[1].verify_sharing(&v, &c, &pi_sharing, &dss_pk[0]));
         let mut decs:Vec<_> = (0..n).map(|j| {
             let (d,pi) = 
-            dbs_ctx[j].decrypt_share(c[j], &dss_kpair[j], &mut rng);
+            dbs_ctx[j].decrypt_share(&c[j], &dss_kpair[j], &mut rng);
             assert_eq!(None, dbs_ctx[0].verify_share(j, &d, &c[j], &pi, &dss_pk[j]));
             Some(d)
         }).collect();

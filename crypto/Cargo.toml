@@ -28,5 +28,5 @@ crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/li
 criterion = "0.3"
 
 [[bench]]
-name = "bench_fsbp"
+name = "bench_pvss"
 harness = false
