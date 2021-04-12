@@ -49,7 +49,7 @@ impl DbsContext {
         &self,
         dss_sk: &crypto_lib::Keypair,
         rng: &mut R,
-    ) -> (Secret,G1, Vec<Commitment>, Vec<Encryptions>,Vec<DleqProof>)
+    ) -> (Vec<Commitment>, Vec<Encryptions>,Vec<DleqProof>)
     where
     R: Rng + ?Sized,
     {
@@ -57,7 +57,7 @@ impl DbsContext {
         let t = self.t;
         // Generate random co-efficients a0,a1,...,at
         let vec: Vec<Scalar> = (0..t+1).map(|_i| Scalar::rand(rng)).collect();
-        let secret = vec[0].clone();
+        
         // Set Polynomial p(x) = a_0 + a_1x + a_2x^2 + ... + a_tx^t
         let polynomial = Polynomial::from_coefficients_vec(vec);
         // s_i = p(i)
@@ -77,7 +77,51 @@ impl DbsContext {
             Dleq::prove( &evaluations[i], &self.public_keys[i], &encryptions[i], &self.h1, &commitments[i], dss_sk, rng)
         }).collect();
         
-        (Bls12_381::pairing(self.g.mul(secret), self.h2),self.g.mul(secret).into_affine(), commitments, encryptions, proof)
+        (commitments, encryptions, proof)
+    }
+
+    /// Creates a PVSS sharing for a given secret s\gets Zq
+    /// Returns (v,c,pi)
+    pub fn generate_share_for_point<R>(
+        &self,
+        dss_sk: &crypto_lib::Keypair,
+        rng: &mut R,
+        secret: Scalar,
+    ) -> (Vec<Commitment>, Vec<Encryptions>,Vec<DleqProof>)
+    where
+    R: Rng + ?Sized,
+    {
+        let n = self.n;
+        let t = self.t;
+        // Generate random co-efficients a0,a1,...,at
+        let vec: Vec<Scalar> = (0..t+1).map(|_i| {
+            if _i == 0 {
+                secret
+            } else {
+                Scalar::rand(rng)
+            }
+        }).collect();
+        
+        // Set Polynomial p(x) = a_0 + a_1x + a_2x^2 + ... + a_tx^t
+        let polynomial = Polynomial::from_coefficients_vec(vec);
+        // s_i = p(i)
+        let evaluations: Vec<Scalar> = (0..n).map(|i| 
+            polynomial.evaluate(&Scalar::from(i as u64 + 1))
+        ).collect();
+        // v_i = h^s_i
+        let commitments: Vec<_> = (0..n).map(|i| {
+            self.h1.mul(evaluations[i]).into_affine()
+        }).collect();
+        // c_i = pk_i^{s_i}
+        let encryptions: Vec<_> = (0..n).map(|i| {
+            self.public_keys[i].mul(evaluations[i]).into_affine()
+        }).collect();
+        // dleq.prove(s_i,g,c_i,h,v_i)
+        let proof:Vec<_> = (0..self.n).map(|i| {
+            Dleq::prove( &evaluations[i], &self.public_keys[i], &encryptions[i], &self.h1, &commitments[i], dss_sk, rng)
+        }).collect();
+
+        (commitments, encryptions, proof)
     }
     
     /// Verifies whether a given PVSS vector is valid
@@ -211,7 +255,7 @@ impl DbsContext {
     where R: Rng+?Sized,
     {
         // OPTIMIZATION - Precompute my_key.inverse
-        let d = e.mul(self.my_key.inverse().unwrap()).into_affine();
+        let d = e.mul(self.my_key_inv).into_affine();
         let pi = Dleq::prove_same_g1(&self.my_key, &self.g, &self.public_keys[self.origin as usize], &d, &e, dss_sk, rng);
         (d,pi)
     }
@@ -236,9 +280,10 @@ impl DbsContext {
     }
     
     // Reconstruct after obtaining t+1 valid decryptions
+    // Returns (B,S=e(B,h'))
     pub fn reconstruct(&self,
         decrypted_shares: &[Option<Share>]
-    ) -> (Secret, G1) 
+    ) -> (G1,Secret) 
     {
         let valid_share_indices: Vec<_> = (0..self.n)
         .filter(|&i| decrypted_shares[i].is_some())
@@ -264,6 +309,6 @@ impl DbsContext {
         })
         .fold(G1::zero().into_projective(), |acc, x| acc + x)
         .into_affine();
-        (Bls12_381::pairing(secret, self.h2), secret)
+        (secret, Bls12_381::pairing(secret, self.h2))
     }
 }

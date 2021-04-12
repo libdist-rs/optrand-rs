@@ -46,11 +46,22 @@ pub struct DbsContext {
     /// OPTIMIZATIONS: Pre-computations for (n,t) degree check
     #[serde(skip)]
     pub(crate) codewords: Vec<Scalar>,
+    /// OPTIMIZATIONS: Pre-compute sk^-1 for decryptions
+    #[serde(skip)]
+    pub(crate) my_key_inv: Scalar,
 }
 
 impl DbsContext {
-    pub fn new<R>(r: &mut R, n:usize, t: usize, id: u16, 
-        public_keys: Vec<PublicKey>, my_key: Scalar) -> Self 
+    /// Take h' as input from outside
+    /// Otherwise when creating multiple contexts each one will have a different h2 resulting in different beacons being generated
+    pub fn new<R>(r: &mut R, 
+        h2: G2P,
+        n:usize, 
+        t: usize, 
+        id: u16, 
+        public_keys: Vec<PublicKey>, 
+        my_key: Scalar
+    ) -> Self 
     where R: Rng+?Sized,
     {
         assert!(n>2*t);
@@ -90,7 +101,7 @@ impl DbsContext {
         DbsContext {
             g: G1::prime_subgroup_generator(),
             h1: G2::prime_subgroup_generator(),
-            h2: G2::prime_subgroup_generator().mul(Scalar::rand(r)),
+            h2,
             n,
             t,
             public_keys,
@@ -98,6 +109,7 @@ impl DbsContext {
             codewords,
             my_key,
             lagrange_inverses: inv_map,
+            my_key_inv: my_key.inverse().unwrap(),
         }
     }
 }
