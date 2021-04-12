@@ -23,7 +23,7 @@ pub fn pvss_generation(c: &mut Criterion) {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
-            let dsskpair = crypto_lib::Keypair::generate_secp256k1();
+            let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.push(dsskpair.public());
             dss_kpair.push(dsskpair);
         }

@@ -41,5 +41,3 @@ pub fn std_rng() -> StdRng {
 }
 
 mod test;
-
-mod baseline;
