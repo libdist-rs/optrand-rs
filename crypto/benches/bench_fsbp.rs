@@ -1,31 +1,48 @@
-// use criterion::{
-//     criterion_group, criterion_main, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
-// };
-// use crypto::dbs::*;
-// use rand::{rngs::StdRng, SeedableRng};
+use criterion::{
+    criterion_group, criterion_main, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
+};
+use crypto::*;
+use rand::{rngs::StdRng, SeedableRng};
 
-// const SEED: u64 = 42;
-// static TEST_POINTS: [usize; 7] = [3, 10, 20, 30, 50, 75, 100];
-// const BENCH_COUNT: usize = 10;
+const SEED: u64 = 42;
+static TEST_POINTS: [usize; 7] = [3, 10, 20, 30, 50, 75, 100];
+const BENCH_COUNT: usize = 10;
 
-// pub fn fsbp_generation(c: &mut Criterion) {
-//     let mut group = c.benchmark_group("fsbp_generation");
-//     BenchmarkGroup::sampling_mode(&mut group, criterion::SamplingMode::Flat);
-//     for &n in &TEST_POINTS {
-//         let rng = &mut StdRng::seed_from_u64(SEED);
-//         let t = (n + 1) / 2;
-//         group.throughput(Throughput::Bytes(n as u64));
-//         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
-//             b.iter(|| {
-//                 let keys: Vec<_> =
-//                     (0..n).map(|_| generate_keypair(rng)).collect();
-//                 let public_keys: Vec<PublicKey> = (0..n).map(|i| keys[i].1).collect();
-//                 generate_shares(n, t, &public_keys, rng)
-//             });
-//         });
-//     }
-//     group.finish();
-// }
+pub fn pvss_generation(c: &mut Criterion) {
+    let mut group = c.benchmark_group("pvss_generation");
+    BenchmarkGroup::sampling_mode(&mut group, criterion::SamplingMode::Flat);
+    for &n in &TEST_POINTS {
+        let mut rng = &mut StdRng::seed_from_u64(SEED);
+        let t = (n - 1) / 2;
+        
+        let mut public_keys = Vec::new();
+        let mut secret_keys = Vec::new();
+        let mut dss_kpair = Vec::new();
+        let mut dss_pk = Vec::new();
+        for _i in 0..n {
+            let kpair = Keypair::generate_keypair(&mut rng);
+            secret_keys.push(kpair.0);
+            public_keys.push(kpair.1);
+            let dsskpair = crypto_lib::Keypair::generate_secp256k1();
+            dss_pk.push(dsskpair.public());
+            dss_kpair.push(dsskpair);
+        }
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+
+        let dbs_ctx = DbsContext::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
+        let idx = 0;
+        let (v,c,pi) = 
+            dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
+
+        group.throughput(Throughput::Bytes(n as u64));
+        group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
+            b.iter(|| {
+                dbs_ctx.generate_shares(&dss_kpair[0],&mut rng)
+            });
+        });
+    }
+    group.finish();
+}
 
 // pub fn fsbp_aggregation(c: &mut Criterion) {
 //     let mut group = c.benchmark_group("fsbp_aggregation");
@@ -136,8 +153,13 @@
 //     group.finish();
 // }
 
-// criterion_group!(
-//     name = benches;
-//     config = Criterion::default().sample_size(BENCH_COUNT);
-//     targets = fsbp_generation, fsbp_aggregation, fsbp_proof_verification, fsbp_share_verification, fsbp_reconstruction);
-// criterion_main!(benches);
+criterion_group!(
+    name = benches;
+    config = Criterion::default().sample_size(BENCH_COUNT);
+    targets = pvss_generation, 
+    // fsbp_aggregation, 
+    // fsbp_proof_verification, 
+    // fsbp_share_verification, 
+    // fsbp_reconstruction,
+);
+criterion_main!(benches);
