@@ -151,10 +151,10 @@ impl DbsContext {
     /// WARNING: This operation is destructive and destroys the original shares
     ///          Clone the vector before using
     pub fn aggregate(&self,
-        indices: Vec<u16>, // whose shares are we combining
-        encs: Vec<Vec<Encryptions>>,
-        commitments: Vec<Vec<Commitment>>,
-        proof: Vec<Vec<DleqProof>>,
+        indices: &[u16], // whose shares are we combining
+        encs: &[Vec<Encryptions>],
+        commitments: &[Vec<Commitment>],
+        proof: &[Vec<DleqProof>],
     ) -> (AggregatePVSS, Vec<DecompositionProof>) 
     {
         assert_eq!(indices.len(), encs.len());
@@ -184,7 +184,7 @@ impl DbsContext {
             .collect();
             DecompositionProof {
                 idx: i as u16,
-                indices: indices.clone(),
+                indices: indices.to_vec(),
                 proof: proofs,
                 encs: nencs,
                 comms: ncomms,

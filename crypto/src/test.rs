@@ -128,7 +128,7 @@ mod dbs_tests {
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
             DbsContext::new(&mut rng, h2, n as usize, t, i, public_keys.clone(), secret_keys[i as usize].clone())
         }).collect();
-        let indices = (0..t+1).map(|i| i as u16).collect();
+        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
         for i in 0..t+1 {
             let (v,c,pi) = 
             dbs_ctx[i].generate_shares(&dss_kpair[&(i as u16)], &mut rng);
@@ -137,7 +137,7 @@ mod dbs_tests {
             encs.push(c);
             proofs.push(pi);
         }
-        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(indices, encs, comms, proofs);
+        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
         assert_eq!(None, dbs_ctx[0].pverify(&agg_pvss));
         for i in 0..n {
             assert_eq!(None, 
