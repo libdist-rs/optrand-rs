@@ -12,6 +12,8 @@ pub fn pvss_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("pvss_generation");
     BenchmarkGroup::sampling_mode(&mut group, criterion::SamplingMode::Flat);
     for &n in &TEST_POINTS {
+        
+        // Start prepping for your test
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
@@ -34,9 +36,11 @@ pub fn pvss_generation(c: &mut Criterion) {
         let (v,c,pi) = 
             dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
 
+        // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
             b.iter(|| {
+                // Insert code that you want tested here
                 dbs_ctx.generate_shares(&dss_kpair[0],&mut rng)
             });
         });
