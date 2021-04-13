@@ -15,5 +15,5 @@ members = [
     "crypto",
     "tools/genconfig",
     "consensus",
-    "main/bft/node",
+    "main",
 ]

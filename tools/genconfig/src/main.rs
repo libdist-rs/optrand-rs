@@ -8,10 +8,12 @@ use config::Node;
 use crypto_lib::{ed25519, Algorithm};
 use types::Replica;
 use fnv::FnvHashMap as HashMap;
+use std::error::Error;
 
 mod io;
+mod cert;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let yaml = load_yaml!("cli.yml");
     let m = App::from_yaml(yaml).get_matches();
     let num_nodes: usize = m
@@ -47,6 +49,7 @@ fn main() {
         .expect("target directory for the config not specified");
     
     let mut node: Vec<Node> = Vec::with_capacity(num_nodes);
+    let (cert, privkey) = cert::new_root_cert()?;
 
     let mut pk = HashMap::default();
     let mut keypairs = HashMap::default();
@@ -96,6 +99,12 @@ fn main() {
             i as Replica,
             format!("{}:{}", "127.0.0.1", base_port + (i as u16)),
         );
+
+        let (new_cert, new_pkey) = cert::get_signed_cert(&cert, &privkey)?;
+
+        node[i].root_cert = cert.to_der()?;
+        node[i].my_cert = new_cert.to_der()?;
+        node[i].my_cert_key = new_pkey.private_key_to_der()?;
     }
 
     for i in 0..num_nodes {
@@ -134,4 +143,5 @@ fn main() {
         node[i].validate().expect("failed to validate node config");
         io::write_file_for_node(out, target, i, &node[i]);
     }
+    Ok(())
 }

@@ -10,10 +10,13 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 types = { package = "types", path="../types"}
 crypto = { package = "crypto", path="../crypto"}
-crypto_lib = { package = "crypto", git="https://github.com/adithyabhatkajake/libchatter-rs"}
 serde_json = "1.0"
 serde_yaml = "0.8"
 toml = "0.5"
 bincode = "1"
 log="0"
 fnv = "1"
+
+[dependencies.crypto_lib]
+package = "crypto"
+git = "https://github.com/adithyabhatkajake/libchatter-rs"

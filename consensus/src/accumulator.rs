@@ -67,12 +67,12 @@ pub fn get_size(num_nodes: Replica) -> Replica {
 pub fn get_acc<T: Serialize>(cx: &Context, data: &T) -> (Vec<Vec<u8>>, DataWithAcc) {
     let shards = to_shards(
         &to_bytes(data),
-        cx.num_nodes as usize,
-        cx.num_faults as usize,
+        cx.num_nodes() as usize,
+        cx.num_faults() as usize,
     );
-    let size = get_size(cx.num_nodes) as usize;
+    let size = get_size(cx.num_nodes()) as usize;
     let mut tree = vec![Vec::new(); (1 << size) + 1];
-    for i in 0..cx.num_nodes as usize {
+    for i in 0..cx.num_nodes() {
         tree[1 << size - 1 | i] = hash::ser_and_hash(&shards[i]).to_vec();
     }
     for i in 0..(1 << size - 1) - 1 {
@@ -88,7 +88,7 @@ pub fn get_acc<T: Serialize>(cx: &Context, data: &T) -> (Vec<Vec<u8>>, DataWithA
                 .sign(&hash::ser_and_hash(&tree[1]))
                 .unwrap(),
             tree: tree,
-            size: size as Replica,
+            size: size,
         },
     )
 }
@@ -136,7 +136,6 @@ impl ShareGatherer {
         &mut self,
         sh: Vec<u8>,
         n: Replica,
-        _pp: &EVSSPublicParams381,
         pk: &PublicKey,
         sign: SignedData,
     ) {

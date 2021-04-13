@@ -14,6 +14,10 @@ crypto = { package = "crypto", path="../../crypto"}
 util = { package = "util", path="../../util"}
 fnv="1"
 
+# For certificates
+openssl = "0.10"
+rustls = "*"
+
 [dependencies.crypto_lib]
 package = "crypto"
 git = "https://github.com/adithyabhatkajake/libchatter-rs"

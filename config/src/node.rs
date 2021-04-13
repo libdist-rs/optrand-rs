@@ -23,10 +23,6 @@ pub struct Node {
 
     // Authentication primitives
     pub crypto_alg: crypto_lib::Algorithm,
-    #[serde(skip)]
-    pub pk_map: HashMap<Replica, crypto_lib::PublicKey>,
-    #[serde(skip)]
-    pub secret_key: Option<crypto_lib::ed25519::SecretKey>,
 
     /// PVSS configs - Contains the generators, pvss public keys, pvss secret keys, etc.
     pub pvss_ctx: DbsContext,
@@ -37,6 +33,11 @@ pub struct Node {
     /// Q[node id] is the actual queue
     /// Initialized with n aggregate sharings
     pub rand_beacon_queue: HashMap<Replica, std::collections::VecDeque<AggregatePVSS>>,
+
+    /// OpenSSL Certificate Details
+    pub my_cert: Vec<u8>,
+    pub my_cert_key: Vec<u8>,
+    pub root_cert: Vec<u8>,
 
     // Caches
     my_ip_addr: String,
@@ -55,13 +56,14 @@ impl Node {
             net_map: HashMap::default(),
             num_faults: 0,
             num_nodes: 1,
-            pk_map: HashMap::default(),
             pk_map_internal: HashMap::default(),
-            secret_key: None,
             secret_key_bytes_internal: sk_bytes,
             rand_beacon_queue: HashMap::default(),
             my_ip_addr: String::new(),
             pvss_ctx: dbs_ctx,
+            my_cert:Vec::new(),
+            root_cert:Vec::new(),
+            my_cert_key:Vec::new(),
         }
     }
 
@@ -75,18 +77,33 @@ impl Node {
         self.my_ip_addr = self.net_map.get(&self.id)
             .expect("Attempted to init a config without assigning an IP to self")
             .clone();
-        for (i,pk) in self.pk_map_internal.iter() {
-            let pkey = crypto_lib::ed25519::PublicKey::decode(&pk)
-                .expect("Failed to decode ED25519 public key");
-
-            self.pk_map.insert(*i, crypto_lib::PublicKey::Ed25519(pkey));
-        }
-        self.secret_key = Some(
-            crypto_lib::ed25519::SecretKey::from_bytes(
-                self.secret_key_bytes_internal.clone()
-            ).expect("Failed to extract secret key"));
         self.pvss_ctx = self.pvss_ctx.init(&mut crypto::std_rng());
         self
+    }
+
+    /// Returns the secret key (KEYPAIR) for this config
+    pub fn get_secret_key(&self) -> crypto_lib::Keypair {
+        let sk = 
+        crypto_lib::ed25519::Keypair::decode(&mut self.secret_key_bytes_internal.clone())
+            .expect("Failed to recover secret key from config");
+        crypto_lib::Keypair::Ed25519(sk)
+    }
+
+    /// Returns the public key map from this config
+    pub fn get_public_key_map(&self) -> HashMap<Replica, crypto_lib::PublicKey> {
+        let mut map = HashMap::default();
+        for (id, pk_data) in &self.pk_map_internal {
+            let pk = match self.crypto_alg {
+                crypto_lib::Algorithm::ED25519 => {
+                    let kp = crypto_lib::ed25519::PublicKey::decode(pk_data)
+                        .expect("Failed to decode the secret key from the config");
+                    crypto_lib::PublicKey::Ed25519(kp)
+                }
+                _ => panic!("Unimplemented algorithm"),
+            };
+            map.insert(*id, pk);
+        }
+        map
     }
 
     /// Checks if the config is valid
@@ -143,5 +160,15 @@ impl Node {
     pub fn my_ip(&self) -> String {
         // Small strings, so it is okay to clone
         self.my_ip_addr.clone()
+    }
+
+    /// DEPRECATED.
+    /// FIX for a Bug in libchatter-rs where u16 is used for Replica
+    pub fn net_map(&self) -> HashMap<u16, String> {
+        let mut map = HashMap::default();
+        for (k,v) in &self.net_map {
+            map.insert(*k as u16, v.clone());
+        }
+        map
     }
 }

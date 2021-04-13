@@ -5,6 +5,8 @@ use std::fs::File;
 use std::io::{self, prelude::*};
 use toml::to_string_pretty;
 
+/// Used to update the IPs in runtime to update stale localhost IPS from the config
+/// Takes a filename, reads all the IPs in the file line by line assuming line i is the ip for node i and puts it in a Vec<>
 pub fn file_to_ips(filename: String) -> Vec<String> {
     let f = File::open(filename).expect("Failed to open the file");
     let mut ips = Vec::new();
