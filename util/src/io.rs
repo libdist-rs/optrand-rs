@@ -16,6 +16,8 @@ pub fn file_to_ips(filename: String) -> Vec<String> {
     ips
 }
 
+/// Convert a serializable object implementing serde::Serialize into bytes
+/// I use bincodec because of high performance, DO NOT USE json-serde for instance
 pub fn to_bytes(obj: &impl Serialize) -> Vec<u8> {
     return bincode::serialize(&obj).unwrap();
 }

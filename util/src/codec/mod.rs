@@ -1,10 +1,6 @@
-use tokio_util::codec::LengthDelimitedCodec;
-
-pub mod block;
-pub mod tx;
-
 pub mod proto;
-pub mod synchs;
+
+use tokio_util::codec::LengthDelimitedCodec;
 
 #[derive(Debug)]
 pub struct EnCodec(pub LengthDelimitedCodec);
