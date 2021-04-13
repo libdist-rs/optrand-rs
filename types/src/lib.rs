@@ -1,7 +1,9 @@
-mod protocol;
-pub use protocol::*;
-
 mod msg;
 pub use msg::*;
 
-pub type View = u64;
+/// The height of the block
+pub type Height = usize;
+/// The replica id
+pub type Replica = usize;
+/// The round or epoch
+pub type Epoch = usize;

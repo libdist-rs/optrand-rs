@@ -1,28 +1,26 @@
-use std::collections::HashMap;
-
-use super::{Block, Transaction};
+use fnv::FnvHashMap as HashMap;
+use super::Block;
 use crate::Height;
 use crypto::hash::Hash;
-use linked_hash_map::LinkedHashMap;
 use std::sync::Arc;
 
 // TODO: Use storage
 pub struct Storage {
-    pub all_delivered_blocks_by_hash: Box<HashMap<Hash, Arc<Block>>>,
-    pub all_delivered_blocks_by_ht: Box<HashMap<Height, Arc<Block>>>,
-    pub committed_blocks_by_ht: Box<HashMap<Height, Arc<Block>>>,
-    pub committed_blocks_by_hash: Box<HashMap<Hash, Arc<Block>>>,
-    pub pending_tx: Box<LinkedHashMap<Hash, Transaction>>,
+    pub all_delivered_blocks_by_hash: HashMap<Hash, Arc<Block>>,
+    pub all_delivered_blocks_by_ht: HashMap<Height, Arc<Block>>,
+    pub committed_blocks_by_ht: HashMap<Height, Arc<Block>>,
+    pub committed_blocks_by_hash: HashMap<Hash, Arc<Block>>,
 }
 
 impl Storage {
-    pub fn new(space: usize) -> Self {
+    /// The space parameter cannot be used in FnvHashMap implementation
+    /// Creates a newly initialized storage container to store all the context
+    pub fn new(_space: usize) -> Self {
         Storage {
-            all_delivered_blocks_by_hash: Box::new(HashMap::new()),
-            all_delivered_blocks_by_ht: Box::new(HashMap::new()),
-            committed_blocks_by_hash: Box::new(HashMap::new()),
-            committed_blocks_by_ht: Box::new(HashMap::new()),
-            pending_tx: Box::new(LinkedHashMap::with_capacity(space)),
+            all_delivered_blocks_by_hash: HashMap::default(),
+            all_delivered_blocks_by_ht: HashMap::default(),
+            committed_blocks_by_hash: HashMap::default(),
+            committed_blocks_by_ht: HashMap::default(),
         }
     }
 }
