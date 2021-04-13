@@ -57,13 +57,12 @@ mod dleq_tests {
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
 
         let dbs_ctx = DbsContext::new(&mut rng, h2, n, t, 0, public_keys, secret_keys[0]);
-        let (comms,encs,pi) = 
+        let pvec = 
             dbs_ctx.generate_shares( &dss_kpair, &mut rng);
         for i in 0..n {
             assert_eq!(None, 
-                crate::Dleq::verify(&pi[i], &dbs_ctx.public_keys[i], &encs[i], &dbs_ctx.h1, &comms[i], &dss_pk));
+                crate::Dleq::verify(&pvec.proofs[i], &dbs_ctx.public_keys[i], &pvec.encs[i], &dbs_ctx.h1, &pvec.comms[i], &dss_pk));
         }
-        
     }
 }
 
@@ -97,24 +96,22 @@ mod dbs_tests {
 
         let dbs_ctx = DbsContext::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
         let idx = 0;
-        let (v,c,pi) = 
+        let pvec = 
             dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
-        assert_eq!(None, dbs_ctx.verify_sharing(&v, &c, &pi, &dss_pk[idx]));
+        assert_eq!(None, dbs_ctx.verify_sharing(&pvec, &dss_pk[idx]));
     }
     
     #[test]
     fn agg_test() {
         let mut rng = std_rng();
-        let n = 21;
+        let n:usize = 21;
         let t = 10;
         
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
-        let mut dss_kpair:HashMap<u16,_> = HashMap::new();
-        let mut dss_pk:HashMap<u16,_> = HashMap::new();
-        let mut comms = Vec::new();
-        let mut encs = Vec::new();
-        let mut proofs = Vec::new();
+        let mut dss_kpair:HashMap<_,_> = HashMap::new();
+        let mut dss_pk:HashMap<_,_> = HashMap::new();
+        let mut pvecs = Vec::new();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
@@ -128,20 +125,18 @@ mod dbs_tests {
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
             DbsContext::new(&mut rng, h2, n as usize, t, i, public_keys.clone(), secret_keys[i as usize].clone())
         }).collect();
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
         for i in 0..t+1 {
-            let (v,c,pi) = 
-            dbs_ctx[i].generate_shares(&dss_kpair[&(i as u16)], &mut rng);
-            assert_eq!(None, dbs_ctx[i].verify_sharing(&v, &c, &pi, &dss_pk[&(i as u16)]));
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            let pvec = 
+            dbs_ctx[i].generate_shares(&dss_kpair[&i], &mut rng);
+            assert_eq!(None, dbs_ctx[i].verify_sharing(&pvec, &dss_pk[&i]));
+            pvecs.push(pvec);
         }
-        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
         assert_eq!(None, dbs_ctx[0].pverify(&agg_pvss));
         for i in 0..n {
             assert_eq!(None, 
-                dbs_ctx[i as usize].decomp_verify(&agg_pvss, &agg_pi[i as usize], &dss_pk)
+                dbs_ctx[i as usize].decomp_verify(&agg_pvss, &agg_pi[i], &dss_pk)
             );
         }
     }
@@ -167,16 +162,16 @@ mod dbs_tests {
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2, n, t, i as u16, public_keys.clone(), secret_keys[i])
+            DbsContext::new(&mut rng, h2, n, t, i, public_keys.clone(), secret_keys[i])
         }).collect();
-        let (_v,c,_pi) = 
+        let pvec = 
             dbs_ctx[0].generate_shares(&dss_kpair[0], &mut rng);
         
         for j in 0..n {
-            let (d,pi) = 
-            dbs_ctx[j].decrypt_share(&c[j], &dss_kpair[j], &mut rng);
+            let dec = 
+            dbs_ctx[j].decrypt_share(&pvec.encs[j], &dss_kpair[j], &mut rng);
             assert_eq!(None, 
-                dbs_ctx[0].verify_share(j, &d, &c[j], &pi, &dss_pk[j])
+                dbs_ctx[0].verify_share(j, &pvec.encs[j], &dec, &dss_pk[j])
             );
         }
     }
@@ -202,27 +197,27 @@ mod dbs_tests {
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2, n, t, i as u16, public_keys.clone(), secret_keys[i])
+            DbsContext::new(&mut rng, h2, n, t, i, public_keys.clone(), secret_keys[i])
         }).collect();
         let s = Scalar::rand(&mut rng);
-        let (v,c,pi_sharing) = 
+        let pvec = 
             dbs_ctx[0].generate_share_for_point(&dss_kpair[0], &mut rng, s);
         assert_eq!(None, 
-            dbs_ctx[1].verify_sharing(&v, &c, &pi_sharing, &dss_pk[0]));
+            dbs_ctx[1].verify_sharing(&pvec, &dss_pk[0]));
         let mut decs:Vec<_> = (0..n).map(|j| {
-            let (d,pi) = 
-            dbs_ctx[j].decrypt_share(&c[j], &dss_kpair[j], &mut rng);
-            assert_eq!(None, dbs_ctx[0].verify_share(j, &d, &c[j], &pi, &dss_pk[j]));
-            Some(d)
+            let dec = 
+            dbs_ctx[j].decrypt_share(&pvec.encs[j], &dss_kpair[j], &mut rng);
+            assert_eq!(None, dbs_ctx[0].verify_share(j, &pvec.encs[j], &dec, &dss_pk[j]));
+            Some(dec.dec)
         }).collect();
         for i in 0..n-(t+1) {
             decs[i] = None;
         }
         
-        let (recon_b,recon_sec) = dbs_ctx[0].reconstruct(&decs);
+        let beacon = dbs_ctx[0].reconstruct(&decs);
 
         let gs_orig = dbs_ctx[0].g.mul(s).into_affine();
-        assert_eq!(recon_b, gs_orig);
-        assert_eq!(recon_sec, Bls12_381::pairing(recon_b, dbs_ctx[0].h2));
+        assert_eq!(beacon.1, gs_orig);
+        assert_eq!(beacon.0, Bls12_381::pairing(beacon.1, dbs_ctx[0].h2));
     }
 }

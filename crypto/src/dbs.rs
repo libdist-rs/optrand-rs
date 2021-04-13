@@ -27,9 +27,9 @@ pub struct AggregatePVSS {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecompositionProof {
     /// The index in the combined vector for which this is a decomposition proof
-    idx: u16,
+    idx: usize,
     /// indices of the nodes whose shares we have combined
-    indices: Vec<u16>,
+    indices: Vec<usize>,
     /// Constituent vi
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
@@ -42,6 +42,39 @@ pub struct DecompositionProof {
     proof: Vec<DleqProof>,
 }
 
+/// Decryption data structure that holds the decrypted share in G1 and 
+/// [OPTIMIZATIONS] - proof of correct decryption (a DLEQ proof) to save pairing computations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Decryption {
+    /// The decrypted share
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub dec: Share,
+    /// The proof that this share was decrypted correctly
+    pub proof: DleqProofSameG1,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Beacon (
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub Secret,
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub G1,
+);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PVSSVec {
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub comms: Vec<Commitment>, 
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub encs: Vec<Encryptions>,
+    pub proofs: Vec<DleqProof>,
+}
+
 impl DbsContext {
     /// Creates a PVSS sharing for a random secret s\gets Zq
     /// Returns (v,c,pi)
@@ -49,7 +82,7 @@ impl DbsContext {
         &self,
         dss_sk: &crypto_lib::Keypair,
         rng: &mut R,
-    ) -> (Vec<Commitment>, Vec<Encryptions>,Vec<DleqProof>)
+    ) -> PVSSVec
     where
     R: Rng + ?Sized,
     {
@@ -76,8 +109,11 @@ impl DbsContext {
         let proof:Vec<_> = (0..self.n).map(|i| {
             Dleq::prove( &evaluations[i], &self.public_keys[i], &encryptions[i], &self.h1, &commitments[i], dss_sk, rng)
         }).collect();
-        
-        (commitments, encryptions, proof)
+        PVSSVec {
+            comms: commitments,
+            encs: encryptions,
+            proofs: proof,
+        }
     }
 
     /// Creates a PVSS sharing for a given secret s\gets Zq
@@ -87,7 +123,7 @@ impl DbsContext {
         dss_sk: &crypto_lib::Keypair,
         rng: &mut R,
         secret: Scalar,
-    ) -> (Vec<Commitment>, Vec<Encryptions>,Vec<DleqProof>)
+    ) -> PVSSVec
     where
     R: Rng + ?Sized,
     {
@@ -120,17 +156,20 @@ impl DbsContext {
         let proof:Vec<_> = (0..self.n).map(|i| {
             Dleq::prove( &evaluations[i], &self.public_keys[i], &encryptions[i], &self.h1, &commitments[i], dss_sk, rng)
         }).collect();
-
-        (commitments, encryptions, proof)
+        PVSSVec {
+            comms: commitments,
+            encs: encryptions,
+            proofs: proof,
+        }
     }
     
     /// Verifies whether a given PVSS vector is valid
     /// Returns false if the verification fails
-    pub fn verify_sharing(&self, v: &[Commitment], c: &[Encryptions], pi: &[DleqProof], dss_pk: &crypto_lib::PublicKey) -> Option<DbsError>
+    pub fn verify_sharing(&self, pvec: &PVSSVec, dss_pk: &crypto_lib::PublicKey) -> Option<DbsError>
     {
         // Coding check
         if (0..self.n).map(|i| {
-            v[i].mul(self.codewords[i])
+            pvec.comms[i].mul(self.codewords[i])
         }).fold(G2P::zero(), |acc, c| {
             acc + c
         }) != G2P::zero()
@@ -140,7 +179,7 @@ impl DbsContext {
         // OPTIMIZATION: Proof of knowledge check = Dleq = Pairing check
         // If this passes, we know that the pairing check will pass, so don't do pairings
         for i in 0..self.n {
-            if let Some(_) = Dleq::verify(&pi[i], &self.public_keys[i], &c[i], &self.h1, &v[i], dss_pk) {
+            if let Some(_) = Dleq::verify(&pvec.proofs[i], &self.public_keys[i], &pvec.encs[i], &self.h1, &pvec.comms[i], dss_pk) {
                 return Some(DbsError::DlogProofCheckFailed(i));
             }
         }
@@ -151,23 +190,19 @@ impl DbsContext {
     /// WARNING: This operation is destructive and destroys the original shares
     ///          Clone the vector before using
     pub fn aggregate(&self,
-        indices: &[u16], // whose shares are we combining
-        encs: &[Vec<Encryptions>],
-        commitments: &[Vec<Commitment>],
-        proof: &[Vec<DleqProof>],
+        indices: &[usize], // whose shares are we combining
+        pvec: &[PVSSVec],
     ) -> (AggregatePVSS, Vec<DecompositionProof>) 
     {
-        assert_eq!(indices.len(), encs.len());
-        assert_eq!(indices.len(), commitments.len());
-        assert_eq!(indices.len(), proof.len());
+        assert_eq!(indices.len(), pvec.len());
         // v_i = v1_i * v2_i * ... * vt+1_i
         let combined_encs = (0..self.n).map(|i| {
-            (0..self.t+1).fold(G1::zero(), |acc, j| acc + encs[j][i].clone())
+            (0..self.t+1).fold(G1::zero(), |acc, j| acc + pvec[j].encs[i].clone())
         }).collect();
         
         // c_i = c1_i * c2_i * ... * ct+1_i
         let combined_comms = (0..self.n).map(|i| {
-            (0..self.t+1).fold(G2::zero(), |acc, j| acc + commitments[j][i].clone())
+            (0..self.t+1).fold(G2::zero(), |acc, j| acc + pvec[j].comms[i].clone())
         }).collect();
         
         // Combined public component
@@ -177,13 +212,13 @@ impl DbsContext {
         };
         // Decomposition proofs
         let agg_pi = (0..self.n).map(|i| {
-            let proofs = (0..self.t+1).map(|j| proof[j][i].clone()).collect();
-            let nencs = (0..self.t+1).map(|j| encs[j][i].clone())
+            let proofs = (0..self.t+1).map(|j| pvec[j].proofs[i].clone()).collect();
+            let nencs = (0..self.t+1).map(|j| pvec[j].encs[i].clone())
             .collect();
-            let ncomms = (0..self.t+1).map(|j| commitments[j][i].clone())
+            let ncomms = (0..self.t+1).map(|j| pvec[j].comms[i].clone())
             .collect();
             DecompositionProof {
-                idx: i as u16,
+                idx: i,
                 indices: indices.to_vec(),
                 proof: proofs,
                 encs: nencs,
@@ -206,10 +241,14 @@ impl DbsContext {
             return Some(DbsError::CodingCheckFailed);
         }
         // Pairing check
+        // OPTIMIZATION - Save 2 pairings (roughly 3-4ms) by not checking self value; we will already check this using decomposition proof
         for id in 0..self.n {
+            if id == self.origin as usize {
+                continue;
+            }
+            // e(c_j, h) = e() =? e(pk_j, v_j)
             if Bls12_381::pairing(agg_pvss.encs[id], self.h1)
             != Bls12_381::pairing(self.public_keys[id], agg_pvss.comms[id]) 
-            // e(c_j, h) = e() = e(pk_j, v_j)
             {
                 return Some(DbsError::PairingCheckFailed(id));
             }
@@ -221,7 +260,7 @@ impl DbsContext {
     pub fn decomp_verify(&self, 
         agg_pvss:&AggregatePVSS, 
         agg_pi:&DecompositionProof, 
-        pk_map: &HashMap<u16, crypto_lib::PublicKey>
+        pk_map: &HashMap<usize, crypto_lib::PublicKey>
     ) -> Option<DbsError> 
     {
         assert!(agg_pi.indices.len() == agg_pi.comms.len());
@@ -241,7 +280,7 @@ impl DbsContext {
         }
         // Check DLEQ between vi and ci
         for id in 0..self.t+1 {
-            if let Some(x) = Dleq::verify(&agg_pi.proof[id], &self.public_keys[self.origin as usize], &agg_pi.encs[id], &self.h1, &agg_pi.comms[id], &pk_map[&(agg_pi.indices[id] as u16)]) {
+            if let Some(x) = Dleq::verify(&agg_pi.proof[id], &self.public_keys[self.origin as usize], &agg_pi.encs[id], &self.h1, &agg_pi.comms[id], &pk_map[&(agg_pi.indices[id])]) {
                 return Some(x);
             }
         }
@@ -251,29 +290,31 @@ impl DbsContext {
     /// Decrypt an encryption meant for me
     /// OPTIMIZATION - Pairing is expensive, NIZKs are cheap
     /// Send a NIZK proof to avoid pairing checks
-    pub fn decrypt_share<R>(&self, e: &Encryptions, dss_sk: &crypto_lib::Keypair, rng:&mut R) -> (Share, DleqProofSameG1) 
+    pub fn decrypt_share<R>(&self, e: &Encryptions, dss_sk: &crypto_lib::Keypair, rng:&mut R) -> Decryption
     where R: Rng+?Sized,
     {
         // OPTIMIZATION - Precompute my_key.inverse
         let d = e.mul(self.my_key_inv).into_affine();
         let pi = Dleq::prove_same_g1(&self.my_key, &self.g, &self.public_keys[self.origin as usize], &d, &e, dss_sk, rng);
-        (d,pi)
+        Decryption{
+            dec: d,
+            proof: pi,
+        }
     }
     
     /// Verify the received share and check the NIZK proof to see if it was decrypted correctly
     pub fn verify_share(&self, 
         origin: usize,
-        d: &Share, 
         e: &Encryptions, 
-        pi: &DleqProofSameG1, 
+        dec: &Decryption,
         dss_pk: &crypto_lib::PublicKey
     ) -> Option<DbsError> 
     {
         Dleq::verify_same_g1(
-            pi, 
+            &dec.proof, 
             &self.g, 
             &self.public_keys[origin], 
-            d, 
+            &dec.dec, 
             e, 
             &dss_pk
         )
@@ -283,7 +324,7 @@ impl DbsContext {
     // Returns (B,S=e(B,h'))
     pub fn reconstruct(&self,
         decrypted_shares: &[Option<Share>]
-    ) -> (G1,Secret) 
+    ) -> Beacon 
     {
         let valid_share_indices: Vec<_> = (0..self.n)
         .filter(|&i| decrypted_shares[i].is_some())
@@ -309,6 +350,6 @@ impl DbsContext {
         })
         .fold(G1::zero().into_projective(), |acc, x| acc + x)
         .into_affine();
-        (secret, Bls12_381::pairing(secret, self.h2))
+        Beacon(Bls12_381::pairing(secret, self.h2), secret)
     }
 }

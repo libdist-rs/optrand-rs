@@ -72,7 +72,7 @@ pub fn pvss_verification(c: &mut Criterion) {
 
         let dbs_ctx = DbsContext::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
         let idx = 0;
-        let (v,c,pi) = 
+        let pvec = 
             dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
 
         // We are ready to start testing now
@@ -80,7 +80,7 @@ pub fn pvss_verification(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &_n| {
             b.iter(|| {
                 // Insert code that you want tested here
-                let _ = dbs_ctx.verify_sharing(&v, &c, &pi, &dss_pk[0]);
+                let _ = dbs_ctx.verify_sharing(&pvec, &dss_pk[0]);
             });
         });
     }
@@ -113,25 +113,21 @@ pub fn pvss_aggregation(c: &mut Criterion) {
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
             DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
-        group.bench_with_input(BenchmarkId::from_parameter(t), &t, |b, &_t| {
+        group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &_t| {
             let indices = indices.clone();
             b.iter(|| {
                 // Insert code that you want tested here
-                let _ = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+                let _ = dbs_ctx[0].aggregate(&indices, &pvecs);
             });
         });
     }
@@ -164,19 +160,15 @@ pub fn pvss_pverify(c: &mut Criterion) {
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
             DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -208,7 +200,7 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
-            dss_pk.insert(i as u16, dsskpair.public());
+            dss_pk.insert(i, dsskpair.public());
             dss_kpair.push(dsskpair);
         }
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
@@ -216,19 +208,15 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
             DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
-        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
+        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -268,19 +256,15 @@ pub fn pvss_decryption(c: &mut Criterion) {
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
             DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -318,27 +302,21 @@ pub fn pvss_verify_decryption(c: &mut Criterion) {
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, i as u16, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
         let mut decs = Vec::with_capacity(n);
-        let mut dec_pi = Vec::with_capacity(n);
         for i in 0..n {
-            let (d,pi) = dbs_ctx[i].decrypt_share(&agg_pvss.encs[0], &dss_kpair[0], &mut rng);
-            decs.push(d);
-            dec_pi.push(pi);
+            let dec = dbs_ctx[i].decrypt_share(&agg_pvss.encs[0], &dss_kpair[0], &mut rng);
+            decs.push(dec);
         }
 
         // We are ready to start testing now
@@ -347,7 +325,7 @@ pub fn pvss_verify_decryption(c: &mut Criterion) {
             b.iter(|| {
                 // Insert code that you want tested here
                 for i in 0..t+1 {
-                    dbs_ctx[0].verify_share(i, &decs[i], &agg_pvss.encs[i], &dec_pi[i], &dss_pk[&(i as u16)]);
+                    dbs_ctx[0].verify_share(i, &agg_pvss.encs[i], &decs[i], &dss_pk[&(i as u16)]);
                 }
             });
         });
@@ -379,27 +357,23 @@ pub fn pvss_reconstruction(c: &mut Criterion) {
         let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, i as u16, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
         }).collect();
-        let mut comms = Vec::with_capacity(t+1); 
-        let mut encs = Vec::with_capacity(t+1); 
-        let mut proofs = Vec::with_capacity(t+1); 
+        let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
-            let (v,c,pi) = 
+            let pvec = 
             dbs_ctx[i].generate_shares(&dss_kpair[i], &mut rng);
-            comms.push(v);
-            encs.push(c);
-            proofs.push(pi);
+            pvecs.push(pvec);
         }
 
-        let indices:Vec<_> = (0..t+1).map(|i| i as u16).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &encs, &comms, &proofs);
+        let indices:Vec<_> = (0..t+1).map(|i| i).collect();
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
         let mut decs = Vec::with_capacity(n);
         let mut dec_pi = Vec::with_capacity(n);
         for i in 0..n {
-            let (d,pi) = dbs_ctx[i].decrypt_share(&agg_pvss.encs[0], &dss_kpair[0], &mut rng);
-            decs.push(Some(d));
-            dec_pi.push(pi);
+            let dec = dbs_ctx[i].decrypt_share(&agg_pvss.encs[0], &dss_kpair[0], &mut rng);
+            decs.push(Some(dec.dec));
+            dec_pi.push(dec.proof);
         }
 
         for i in 0..n-t-1 {

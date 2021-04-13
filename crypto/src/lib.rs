@@ -1,4 +1,6 @@
 mod ark_serde;
+pub use ark_serde::*;
+
 pub mod hash;
 
 mod dleq;
@@ -38,6 +40,13 @@ pub type Commitment = G2;
 
 pub fn std_rng() -> StdRng {
     rand::rngs::StdRng::from_entropy()
+}
+
+pub fn rand_g2_generator<R>(rng: &mut R) 
+    -> G2P
+    where R:Rng+?Sized, 
+{
+    G2::prime_subgroup_generator().mul(Scalar::rand(rng))
 }
 
 mod test;
