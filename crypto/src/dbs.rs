@@ -197,12 +197,12 @@ impl DbsContext {
         assert_eq!(indices.len(), pvec.len());
         // v_i = v1_i * v2_i * ... * vt+1_i
         let combined_encs = (0..self.n).map(|i| {
-            (0..self.t+1).fold(G1::zero(), |acc, j| acc + pvec[j].encs[i].clone())
+            (0..pvec.len()).fold(G1::zero(), |acc, j| acc + pvec[j].encs[i].clone())
         }).collect();
         
         // c_i = c1_i * c2_i * ... * ct+1_i
         let combined_comms = (0..self.n).map(|i| {
-            (0..self.t+1).fold(G2::zero(), |acc, j| acc + pvec[j].comms[i].clone())
+            (0..pvec.len()).fold(G2::zero(), |acc, j| acc + pvec[j].comms[i].clone())
         }).collect();
         
         // Combined public component
@@ -212,10 +212,10 @@ impl DbsContext {
         };
         // Decomposition proofs
         let agg_pi = (0..self.n).map(|i| {
-            let proofs = (0..self.t+1).map(|j| pvec[j].proofs[i].clone()).collect();
-            let nencs = (0..self.t+1).map(|j| pvec[j].encs[i].clone())
+            let proofs = (0..pvec.len()).map(|j| pvec[j].proofs[i].clone()).collect();
+            let nencs = (0..pvec.len()).map(|j| pvec[j].encs[i].clone())
             .collect();
-            let ncomms = (0..self.t+1).map(|j| pvec[j].comms[i].clone())
+            let ncomms = (0..pvec.len()).map(|j| pvec[j].comms[i].clone())
             .collect();
             DecompositionProof {
                 idx: i,
