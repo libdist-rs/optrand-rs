@@ -1,15 +1,15 @@
 // A tool that builds config files for all the nodes and the clients for the
 // protocol.
 
+use std::collections::VecDeque;
 use clap::{load_yaml, App};
 use config::Node;
-use crypto::rand::{rngs::StdRng, SeedableRng};
-use crypto::Algorithm;
-use crypto::UniformRand;
-use crypto_lib::{ed25519, secp256k1};
-use std::collections::HashMap;
+// use crypto::rand::{rngs::StdRng, SeedableRng};
+use crypto_lib::{ed25519, Algorithm};
 use types::Replica;
-use util::io::*;
+use fnv::FnvHashMap as HashMap;
+
+mod io;
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
@@ -35,78 +35,72 @@ fn main() {
         .expect("base_port value not specified")
         .parse::<u16>()
         .expect("failed to parse base_port into a number");
-    let blocksize: usize = m
-        .value_of("block_size")
-        .expect("no block_size specified")
-        .parse::<usize>()
-        .expect("unable to convert blocksize into a number");
-    let client_base_port: u16 = m
-        .value_of("client_base_port")
-        .expect("no client_base_port specified")
-        .parse::<u16>()
-        .expect("unable to parse client_base_port into an integer");
-    let t: Algorithm = m
-        .value_of("algorithm")
-        .unwrap_or("ED25519")
-        .parse::<Algorithm>()
-        .unwrap_or(Algorithm::ED25519);
-    let out = m.value_of("out_type").unwrap_or("json");
+    let out = match m.value_of("out_type").unwrap_or("binary") {
+        "binary" => io::OutputType::Binary,
+        "json" => io::OutputType::JSON,
+        "toml" => io::OutputType::TOML,
+        "yaml" => io::OutputType::Yaml,
+        _ => io::OutputType::Binary,
+    };
     let target = m
         .value_of("target")
         .expect("target directory for the config not specified");
-    let payload: usize = m.value_of("payload").unwrap_or("0").parse().unwrap();
     
     let mut node: Vec<Node> = Vec::with_capacity(num_nodes);
 
-    let mut pk = HashMap::new();
-    let mut ip = HashMap::new();
+    let mut pk = HashMap::default();
+    let mut keypairs = HashMap::default();
+    let mut ip = HashMap::default();
+
+    // PVSS public keys and secret keys
+    let mut pvss_pk_map = Vec::new();
+    let mut pvss_sk_map = Vec::new();
+
+    let mut rng = crypto::std_rng();
+    let h2 = crypto::rand_g2_generator(&mut rng);
+
+    for _i in 0..num_nodes {
+        let pvss_keypair = crypto::Keypair::generate_keypair(&mut rng);
+        pvss_sk_map.push(pvss_keypair.0);
+        pvss_pk_map.push(pvss_keypair.1);
+    }
+
+    let mut pvss_ctx_map:HashMap<_,_> = HashMap::default();
+    for i in 0..num_nodes {
+        let ctx = crypto::DbsContext::new(&mut rng, 
+            h2, 
+            num_nodes, 
+            num_faults, 
+            i, 
+            pvss_pk_map.clone(), 
+            pvss_sk_map[i].clone(),
+        );
+        pvss_ctx_map.insert(i, ctx);
+    }
 
     for i in 0..num_nodes {
-        node.push(Node::new());
+        let kp = ed25519::Keypair::generate();
+        keypairs.insert(i, crypto_lib::Keypair::Ed25519(kp.clone()));
+        pk.insert(i as Replica, kp.public().encode().to_vec());
+        let new_node = Node::new(kp.encode().to_vec(), pvss_ctx_map.remove(&i).unwrap());
+        node.push(new_node);
+
+        node[i].crypto_alg = Algorithm::ED25519;
 
         node[i].delta = delay;
         node[i].id = i as Replica;
         node[i].num_nodes = num_nodes;
         node[i].num_faults = num_faults;
-        node[i].block_size = blocksize;
-        node[i].payload = payload;
-        node[i].client_port = client_base_port + (i as u16);
-
-        node[i].crypto_alg = t.clone();
-        match t {
-            Algorithm::ED25519 => {
-                let kp = ed25519::Keypair::generate();
-                pk.insert(i as Replica, kp.public().encode().to_vec());
-                node[i].secret_key_bytes = kp.encode().to_vec();
-            }
-            Algorithm::SECP256K1 => {
-                let kp = secp256k1::Keypair::generate();
-                pk.insert(i as Replica, kp.public().encode().to_vec());
-                node[i].secret_key_bytes = kp.secret().to_bytes().to_vec();
-            }
-            _ => (),
-        };
+           
         ip.insert(
             i as Replica,
             format!("{}:{}", "127.0.0.1", base_port + (i as u16)),
         );
-
-        // node[i].bi_p =
-        //     Some(crypto::Biaccumulator381::setup(num_nodes, &mut StdRng::from_entropy()).unwrap());
-        // bi_pp.insert(
-        //     i as Replica,
-        //     node[i].bi_p.as_ref().unwrap().get_public_params(),
-        // );
     }
 
-    let rng = &mut StdRng::from_entropy();
-    let rand_beacon_parameter = crypto::EVSS381::setup(num_faults, rng).unwrap();
-
     for i in 0..num_nodes {
-        node[i].pk_map = pk.clone();
+        node[i].set_pk_map_data(pk.clone());
         node[i].net_map = ip.clone();
-        // node[i].bi_pp_map = bi_pp.clone();
-        // node[i].rand_beacon_parameter = Some(rand_beacon_parameter.clone());
     }
 
     for i in 0..num_nodes {
@@ -116,77 +110,28 @@ fn main() {
                 std::collections::VecDeque::with_capacity(num_nodes + num_faults),
             );
         }
-        for _ in 0..num_nodes + num_faults {
-            let poly =
-                crypto::EVSS381::commit(&rand_beacon_parameter, crypto::F381::rand(rng), rng)
-                    .unwrap();
-            for k in 0..num_nodes {
-                node[k]
-                    .rand_beacon_queue
-                    .get_mut(&(i as Replica))
-                    .unwrap()
-                    .push_back(
-                        crypto::EVSS381::get_share(
-                            crypto::F381::from((k + 1) as u16),
-                            &rand_beacon_parameter,
-                            &poly,
-                            rng,
-                        )
-                        .unwrap(),
-                    );
-            }
-        }
     }
 
+    // Since we are generating all the config files in one place, it is okay to aggregate two random PVSS sharings generated here.
+    // In the real world, start with the config as seed or run another protocol to generate the first n sharings
+    // I mean, come on! If you trust this file to generate keys for your protocol, you can trust this file to generate the seed properly too :)
+    let indices = [1, 2]; // We will throw this away anyways
     for i in 0..num_nodes {
-        let mut vec = Vec::with_capacity(100);
-        for time in 0..100 {
-            println!("{}:{}", i, time);
-            let mut shares = vec![std::collections::VecDeque::with_capacity(num_nodes); num_nodes];
-            let mut commits = Vec::with_capacity(num_nodes);
-            for _ in 0..num_nodes {
-                let poly =
-                    crypto::EVSS381::commit(&rand_beacon_parameter, crypto::F381::rand(rng), rng)
-                        .unwrap();
-                commits.push(poly.get_commit());
-                for j in 0..num_nodes {
-                    shares[j].push_back(
-                        crypto::EVSS381::get_share(
-                            crypto::F381::from((j + 1) as u16),
-                            &rand_beacon_parameter,
-                            &poly,
-                            rng,
-                        )
-                        .unwrap(),
-                    );
-                }
-            }
-            vec.push((shares, commits));
+        let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
+        let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
+        let pvec = [sh1, sh2];
+        let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
+        // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
+        for j in 0..num_nodes {
+            let mut queue = VecDeque::new();
+            queue.push_front(combined_pvss.clone());
+            node[j].rand_beacon_queue.insert(i, queue);
         }
-        node[i].rand_beacon_shares = vec;
     }
 
     // Write all the files
     for i in 0..num_nodes {
-        match out {
-            "json" => {
-                let filename = format!("{}/nodes-{}.json", target, i);
-                write_json(filename, &node[i]);
-            }
-            "binary" => {
-                let filename = format!("{}/nodes-{}.dat", target, i);
-                write_bin(filename, &node[i]);
-            }
-            "toml" => {
-                let filename = format!("{}/nodes-{}.toml", target, i);
-                write_toml(filename, &node[i]);
-            }
-            "yaml" => {
-                let filename = format!("{}/nodes-{}.yml", target, i);
-                write_yaml(filename, &node[i]);
-            }
-            _ => (),
-        }
         node[i].validate().expect("failed to validate node config");
+        io::write_file_for_node(out, target, i, &node[i]);
     }
 }
