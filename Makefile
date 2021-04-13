@@ -5,5 +5,10 @@ all:
 
 configs:
 	cargo build -p genconfig --release
-	mkdir -p testdata/n3-d100
-	./target/release/genconfig -n 3 -d 100 -P 10000 -f 1 -o json -t testdata/n3-d100
+	for f in 1 4 8 16 32 ; do \
+		N=$$(( 2*$$f + 1 )) ; \
+		mkdir -p testdata/n$$N-f$$f ; \
+		./target/release/genconfig -n $$N -d 100 --base_port 4000 --target testdata/n$$N-f$$f ;\
+	done
+	@mkdir -p testdata/test
+	@./target/release/genconfig -n 7 -d 50 --base_port 4000 --target testdata/test
