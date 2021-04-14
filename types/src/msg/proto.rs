@@ -118,11 +118,14 @@ impl WireReady for ProtocolMsg {
             ProtocolMsg::RawBeaconReady(x,y) => 
                 ProtocolMsg::BeaconReady(x,y),
             ProtocolMsg::RawPropose(p,z_pa, decomp) => {
-                let p = p.init();
+                // let p = p.init();
+                log::info!("Got a propose message");
                 if p.highest_certificate.msg != p.new_block.parent_hash {
+                    log::warn!("Rejecting propose message because parent_hash is not the message of the highest certificate");
                     return ProtocolMsg::InvalidMessage;
                 }
                 if p.new_block.aggregate_pvss.encs.len() != p.new_block.aggregate_pvss.comms.len() {
+                    log::warn!("Rejecting propose beacuse pvss encs len != pvss comms len");
                     return ProtocolMsg::InvalidMessage;
                 }
                 ProtocolMsg::Propose(p,z_pa, decomp)

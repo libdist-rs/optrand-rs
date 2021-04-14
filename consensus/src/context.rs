@@ -125,6 +125,9 @@ impl Context {
             .committed_blocks_by_ht
             .insert(0, genesis_block);
         c.pub_key_map = c.config.get_public_key_map();
+        let mut highest_cert = Certificate::empty_cert();
+        highest_cert.msg = GENESIS_BLOCK.hash.to_vec();
+        c.highest_cert = Arc::new(highest_cert);
         c
     }
 

@@ -71,7 +71,7 @@ pub fn check_valid(new_acc: &[Vec<u8>], acc: &DataWithAcc, pk: &crypto_lib::Publ
     if new_acc  != acc.tree {
         return false;
     } 
-    if !pk.verify(&acc.tree[1], &acc.sign.votes[0].auth) {
+    if !pk.verify(&hash::ser_and_hash(&acc.tree[1]), &acc.sign.votes[0].auth) {
         return false;
     }
     true
