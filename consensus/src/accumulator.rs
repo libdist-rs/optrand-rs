@@ -94,7 +94,7 @@ pub fn get_acc<T: Serialize>(cx: &Context, data: &T) -> (Vec<Vec<u8>>, DataWithA
             hash::ser_and_hash(&(tree[index << 1].clone(), tree[index << 1 | 1].clone())).to_vec();
     }
     let mut cert = Certificate::empty_cert();
-    cert.msg = tree[1].clone();
+    cert.msg = hash::ser_and_hash(&tree[1]).to_vec();
     cert.add_vote(
         Vote{
             origin: cx.id(),
