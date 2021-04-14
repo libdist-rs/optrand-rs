@@ -25,18 +25,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         util::codec::proto::Codec::new(),
     ).await;
 
-    // Start a second thread to react to the consensus messages
-    let core_rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .worker_threads(2)
-        .build()
-        .unwrap();
-
     // Start the optrand reactor on the second thread
-    core_rt.block_on(consensus::reactor(
+    consensus::reactor(
         config,
         net_send,
         net_recv,
-    ));
+    ).await;
     Ok(())
 }

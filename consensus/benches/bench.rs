@@ -1,12 +1,12 @@
 extern crate consensus;
-use consensus::accumulator;
 use criterion::{
     criterion_group, criterion_main, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
 };
 use crypto::*;
 use serde::Serialize;
-use types::{DataWithAcc, Replica, SignedData, Vote};
+use types::{DataWithAcc, Replica, SignedShard, Certificate};
 use util::io::to_bytes;
+use consensus::{to_shards, get_size};
 
 const SEED: u64 = 42;
 static TEST_POINTS: [usize; 7] = [3, 10, 20, 30, 50, 75, 100];
@@ -14,15 +14,13 @@ const BENCH_COUNT: usize = 10;
 
 fn tree_get_dummy_acc<T: Serialize>(
     cx_num_nodes: Replica,
-    cx_num_faults: Replica,
     data: &T,
 ) -> (Vec<Vec<u8>>, DataWithAcc) {
-    let shards = accumulator::to_shards(
+    let shards = to_shards(
         &to_bytes(data),
         cx_num_nodes as usize,
-        cx_num_faults as usize,
     );
-    let size = accumulator::get_size(cx_num_nodes) as usize;
+    let size = get_size(cx_num_nodes) as usize;
     let mut tree = vec![Vec::new(); (1 << size) + 1];
     for i in 0..cx_num_nodes as usize {
         tree[1 << size - 1 | i] = hash::ser_and_hash(&shards[i]).to_vec();
@@ -35,14 +33,14 @@ fn tree_get_dummy_acc<T: Serialize>(
     (
         shards,
         DataWithAcc {
-            sign: Vec::new(),
+            sign: Certificate::empty_cert(),
             tree: tree,
             size: size as Replica,
         },
     )
 }
 
-fn tree_check_dummy_share(sign: SignedData) {
+fn tree_check_dummy_share(sign: SignedShard) {
     let mut change = sign.index;
     change >>= 1;
     for i in 0..sign.chain.len() - 1 {
@@ -62,7 +60,7 @@ fn test(c: &mut Criterion) {
         let data = vec![0 as u8; *n];
         group.throughput(Throughput::Bytes(*n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(*n), n, |b, &n| {
-            b.iter(|| tree_get_dummy_acc(n, (n - 1) / 2, &data))
+            b.iter(|| tree_get_dummy_acc(n, &data))
         });
     }
     group.finish();

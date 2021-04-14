@@ -72,7 +72,7 @@ mod dbs_tests {
     use ark_bls12_381::Bls12_381;
     use ark_std::UniformRand;
     use ark_ec::{AffineCurve, ProjectiveCurve, PairingEngine};
-    use std::collections::HashMap;
+    use fnv::FnvHashMap as HashMap;
     
     #[test]
     fn gen_test() {
@@ -109,8 +109,8 @@ mod dbs_tests {
         
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
-        let mut dss_kpair:HashMap<_,_> = HashMap::new();
-        let mut dss_pk:HashMap<_,_> = HashMap::new();
+        let mut dss_kpair:HashMap<_,_> = HashMap::default();
+        let mut dss_pk:HashMap<_,_> = HashMap::default();
         let mut pvecs = Vec::new();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);

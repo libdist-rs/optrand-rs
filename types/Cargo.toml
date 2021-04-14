@@ -12,6 +12,7 @@ bincode = "1"
 crypto = {package = "crypto", path = "../crypto"}
 bytes = "1.0"
 fnv="1"
+log = "0"
 
 [dependencies.types_upstream]
 package = "types"

@@ -1,0 +1,7 @@
+2021-04-14 12:05:58,497 INFO  [app] Successfully decoded the config file
+2021-04-14 12:06:24,503 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:55106
+2021-04-14 12:06:24,525 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:55116
+2021-04-14 12:06:24,526 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:55118
+2021-04-14 12:06:24,526 INFO  [net::tokio_manager::protocol] Connected to all nodes in the protocol
+2021-04-14 12:06:30,029 INFO  [consensus::new_epoch] Epoch 0 ended, waiting for another epoch
+2021-04-14 12:06:30,071 WARN  [net::tokio_manager::peer] Disconnected from peer

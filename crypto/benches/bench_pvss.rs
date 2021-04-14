@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use fnv::FnvHashMap as HashMap;
 
 use criterion::{
     criterion_group, criterion_main, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
@@ -194,7 +194,7 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
         let mut dss_kpair = Vec::new();
-        let mut dss_pk = HashMap::new();
+        let mut dss_pk = HashMap::default();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
@@ -242,7 +242,7 @@ pub fn pvss_decryption(c: &mut Criterion) {
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
         let mut dss_kpair = Vec::new();
-        let mut dss_pk = HashMap::new();
+        let mut dss_pk = HashMap::default();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
@@ -290,7 +290,7 @@ pub fn pvss_verify_decryption(c: &mut Criterion) {
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
         let mut dss_kpair = Vec::new();
-        let mut dss_pk = HashMap::new();
+        let mut dss_pk = HashMap::default();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
@@ -345,7 +345,7 @@ pub fn pvss_reconstruction(c: &mut Criterion) {
         let mut public_keys = Vec::new();
         let mut secret_keys = Vec::new();
         let mut dss_kpair = Vec::new();
-        let mut dss_pk = HashMap::new();
+        let mut dss_pk = HashMap::default();
         for i in 0..n {
             let kpair = Keypair::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);

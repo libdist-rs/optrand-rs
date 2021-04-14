@@ -4,14 +4,16 @@ use crate::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DataWithAcc {
-    pub sign: Vec<u8>,
+    /// Signature on the root of the merkle tree for whatever data you are sending
+    pub sign: Certificate,
     pub tree: Vec<Vec<u8>>,
     pub size: Replica,
 }
 
+/// This is the shard for the accumulator
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignedData {
-    pub sign: Vec<u8>,
+pub struct SignedShard {
+    pub sign: Certificate,
     pub start: Vec<u8>,
     pub index: Replica,
     pub chain: Vec<(Vec<u8>, Vec<u8>)>,

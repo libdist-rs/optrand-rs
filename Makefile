@@ -12,3 +12,5 @@ configs:
 	done
 	@mkdir -p testdata/test
 	@./target/release/genconfig -n 7 -d 50 --base_port 4000 --target testdata/test
+	@mkdir -p testdata/test-local
+	@./target/release/genconfig -n 4 -d 50 --base_port 4000 --target testdata/test-local

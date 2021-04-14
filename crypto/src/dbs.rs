@@ -4,7 +4,7 @@ pub use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 pub use ark_ff::{Field, One, PrimeField, UniformRand, Zero, FromBytes};
 pub use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
 pub use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::collections::HashMap;
+use fnv::FnvHashMap as HashMap;
 pub use std::{error::Error, fmt};
 use serde::{Serialize, Deserialize};
 
@@ -21,25 +21,25 @@ pub struct AggregatePVSS {
     /// comms contains the combined commitments v := (v1, v2, ..., vn)
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    pub(crate) comms: Vec<Commitment>,
+    pub comms: Vec<Commitment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecompositionProof {
     /// The index in the combined vector for which this is a decomposition proof
-    idx: usize,
+    pub idx: usize,
     /// indices of the nodes whose shares we have combined
-    indices: Vec<usize>,
+    pub indices: Vec<usize>,
     /// Constituent vi
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    pub(crate) comms: Vec<Commitment>,
+    pub comms: Vec<Commitment>,
     /// Constituent ci
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
-    pub(crate) encs: Vec<Encryptions>,
+    pub encs: Vec<Encryptions>,
     /// A vector of dleq proofs for all constituent vi and ci for [n]
-    proof: Vec<DleqProof>,
+    pub proof: Vec<DleqProof>,
 }
 
 /// Decryption data structure that holds the decrypted share in G1 and 

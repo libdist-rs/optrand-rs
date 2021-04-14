@@ -27,6 +27,10 @@ fnv = "1"
 package = "crypto"
 git = "https://github.com/adithyabhatkajake/libchatter-rs"
 
+[dependencies.types_upstream]
+package = "types"
+git="https://github.com/adithyabhatkajake/libchatter-rs"
+
 [dev-dependencies]
 criterion = "0.3"
 

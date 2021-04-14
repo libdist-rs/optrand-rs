@@ -7,3 +7,5 @@ pub type Height = usize;
 pub type Replica = usize;
 /// The round or epoch
 pub type Epoch = usize;
+
+pub type WireReadyDown = types_upstream::WireReady;

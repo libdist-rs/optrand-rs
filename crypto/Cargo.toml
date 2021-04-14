@@ -21,6 +21,7 @@ ark-poly-commit = { version = "0.2", default-features = true }
 ark-std = { version = "0.2", default-features = true }
 ark-bls12-381 = { version = "0.2", default-features = true }
 merkletree = "0.21"
+fnv = "1"
 
 crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
 

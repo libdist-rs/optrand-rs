@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
-use crate::Vote;
+use crate::{Epoch, Vote};
+use crypto::hash::Hash;
+
 /// A certificate contains several signatures on a message
 /// A vote is a special case of certificate with one vote
 /// A sync certificate is a certificate containing vote from n/2+1 nodes
@@ -7,7 +9,19 @@ use crate::Vote;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Certificate {
     pub msg: Vec<u8>,
-    votes: Vec<Vote>,
+    pub votes: Vec<Vote>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResponsiveVote {
+    pub epoch: Epoch, 
+    pub block_hash: Hash,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SyncVote {
+    pub epoch: Epoch, 
+    pub block_hash: Hash,
 }
 
 impl Certificate {

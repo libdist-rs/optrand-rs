@@ -1,12 +1,4 @@
-[package]
-name = "optrand"
-version = "0.1.0"
-authors = ["zhtluo <zhtluo@gmail.com>"]
-edition = "2018"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
 
 [workspace]
 members = [
@@ -17,3 +9,5 @@ members = [
     "consensus",
     "main",
 ]
+
+# This is just a collection of packages that builds Optrand

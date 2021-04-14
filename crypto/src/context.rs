@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use fnv::FnvHashMap as HashMap;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,7 @@ impl DbsContext {
     fn compute_inv_map(n:usize) -> HashMap<(usize, usize), Scalar> 
     {
         // let n_int = n as i128;
-        let mut inv_map = HashMap::with_capacity(n*2);
+        let mut inv_map = HashMap::default();
         for i in 0..n {
             for j in 0..n {
                 if i == j {

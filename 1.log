@@ -1,0 +1,18 @@
+2021-04-14 12:05:58,501 INFO  [app] Successfully decoded the config file
+2021-04-14 12:06:24,499 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:54618
+2021-04-14 12:06:24,525 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:54632
+2021-04-14 12:06:24,526 INFO  [net::tokio_manager::protocol] New incoming connection from 127.0.0.1:54630
+2021-04-14 12:06:24,526 INFO  [net::tokio_manager::protocol] Connected to all nodes in the protocol
+2021-04-14 12:06:30,029 INFO  [consensus::new_epoch] Epoch 0 ended, waiting for another epoch
+thread 'main' panicked at '[WARN] The signature of the shard does not match.', consensus/src/accumulator.rs:218:13
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: consensus::accumulator::ShareGatherer::add_share
+   2: <core::future::from_generator::GenFuture<T> as core::future::future::Future>::poll
+   3: node_optrand::main::{{closure}}
+   4: std::thread::local::LocalKey<T>::with
+   5: tokio::runtime::enter::Enter::block_on
+   6: tokio::runtime::Runtime::block_on
+   7: node_optrand::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+2021-04-14 12:06:30,069 ERROR [net::tokio_manager::protocol] Failed to read a protocol message to send outside the network

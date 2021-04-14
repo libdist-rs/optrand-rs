@@ -1,5 +1,7 @@
+use std::collections::VecDeque;
+
 use super::{is_valid_replica, ParseError};
-use crypto::{AggregatePVSS, DbsContext};
+use crypto::{AggregatePVSS, DbsContext, hash::Hash};
 use serde::{Deserialize, Serialize};
 use fnv::FnvHashMap as HashMap;
 use types::Replica;
@@ -28,11 +30,16 @@ pub struct Node {
     pub pvss_ctx: DbsContext,
 
     // Beacon data structures
-    /// Rand_beacon_queue contains shares for already finished sharings
+    /// Rand_beacon_queue contains shares for already finished (committed) sharings
     /// In the paper this is referred to as Q
     /// Q[node id] is the actual queue
     /// Initialized with n aggregate sharings
-    pub rand_beacon_queue: HashMap<Replica, std::collections::VecDeque<AggregatePVSS>>,
+    pub rand_beacon_queue: HashMap<Replica, VecDeque<Hash>>,
+    /// These are aggregate vectors received anytime between the last time a node was the leader till the next time the same node becomes a leader
+    /// This is an optimization to be performed on another thread so that nodes can keep aggregating and verifying shares before it is their turn to be a leader, so that when it is their turn to propose all the nodes have already verified and are ready to vote
+    pub beacon_sharing_buffer: HashMap<Replica, VecDeque<Hash>>,
+
+    pub sharings: HashMap<Hash, AggregatePVSS>,
 
     /// OpenSSL Certificate Details
     pub my_cert: Vec<u8>,
@@ -59,11 +66,13 @@ impl Node {
             pk_map_internal: HashMap::default(),
             secret_key_bytes_internal: sk_bytes,
             rand_beacon_queue: HashMap::default(),
+            beacon_sharing_buffer: HashMap::default(),
             my_ip_addr: String::new(),
             pvss_ctx: dbs_ctx,
             my_cert:Vec::new(),
             root_cert:Vec::new(),
             my_cert_key:Vec::new(),
+            sharings: HashMap::default(),
         }
     }
 
