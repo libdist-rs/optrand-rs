@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crypto::hash::ser_and_hash;
 use tokio_util::time::DelayQueue;
-use types::Block;
+use types::{Block, Epoch};
 use std::sync::Arc;
 
 use crate::{context::Context, events::Event};
@@ -24,14 +24,14 @@ impl Context {
 
     /// Tries to start the sync commit timers
     /// Make sure this is executed only once
-    pub async fn start_sync_commit(&mut self, dq: &mut DelayQueue<Event>) {
+    pub async fn start_sync_commit(&mut self, e: Epoch, dq: &mut DelayQueue<Event>) {
         if self.sync_commit_timeout {
             return;
         }
         if self.started_sync_timer {
             return;
         }
-        dq.insert(Event::SyncTimer, Duration::from_millis(self.delta()*2));
+        dq.insert(Event::SyncTimer(e), Duration::from_millis(self.delta()*2));
         self.started_sync_timer = true;
     }
 

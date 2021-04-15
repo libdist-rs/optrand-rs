@@ -80,7 +80,7 @@ impl Context {
             let b = self.storage.all_delivered_blocks_by_hash[&rcert.sync_vote.block_hash].clone();
             self.epoch_block_lock = Some(b);
         }
-        self.start_sync_commit(dq).await;
+        self.start_sync_commit(rcert.sync_vote.epoch, dq).await;
     }
 
     pub async fn receive_sync_cert_indirect(&mut self, rcert: SyncCertMsg, dq: &mut DelayQueue<Event>) {
@@ -123,7 +123,7 @@ impl Context {
             let b = self.storage.all_delivered_blocks_by_hash[&rcert.sync_vote.block_hash].clone();
             self.epoch_block_lock = Some(b);
         }
-        self.start_sync_commit(dq).await;
+        self.start_sync_commit(rcert.sync_vote.epoch, dq).await;
     }
 
     /// Received a deliver message for a responsive certificate

@@ -1,4 +1,5 @@
 use crypto::hash::Hash;
+use types::Epoch;
 
 /// All optrand events are defined here
 #[derive(PartialEq, Debug)]
@@ -15,13 +16,13 @@ pub enum Event {
     /// VoteTimeout to send or not to send synchronous vote messages on the block hash
     VoteTimeout(Hash),
     /// Sync commit event is triggered when sync cert is observed
-    SyncCommit,
+    SyncCommit(Epoch),
     /// Responsive Commit Timeout; Do not commit blocks after this
     ResponsiveCommitTimeout,
     /// Sync Commit Timeout; Do not synchronously commit after this
     SyncCommitTimeout,
     /// Sync Timer
-    SyncTimer, 
+    SyncTimer(Epoch), 
 }
 
 impl Event {
@@ -32,9 +33,9 @@ impl Event {
             Event::ProposeTimeout => "Propose Timed out",
             Event::VoteTimeout(_) => "Vote Timed out",
             Event::ResponsiveCommitTimeout => "Responsive Commit timed out", 
-            Event::SyncCommit => "Synchronously committing epoch",
+            Event::SyncCommit(_) => "Synchronously committing epoch",
             Event::SyncCommitTimeout => "Sync Commit timed out",
-            Event::SyncTimer => "Sync timer for 2D finished"
+            Event::SyncTimer(_) => "Sync timer for 2D finished"
         }
     }
 }

@@ -15,7 +15,7 @@ impl Context {
                 continue;
             }
             self.net_send.send((i, 
-                Arc::new(ProtocolMsg::RawPVSSSharingReady(self.last_leader_epoch + self.config.num_nodes, comb_pvss.clone(), comb_proof[i].clone()))
+                Arc::new(ProtocolMsg::RawPVSSSharingReady(self.id(), comb_pvss.clone(), comb_proof[i].clone()))
             )).unwrap();
         }
         self.pvss_indices.clear();
@@ -25,6 +25,7 @@ impl Context {
         queue.push_back(h);
         self.config.beacon_sharing_buffer.insert(myid, queue);
         self.config.sharings.insert(h, comb_pvss);
+        self.decomps.insert(h, comb_proof);
     }
 
     /// This is called when sharings are sent to me to propose in the next round
@@ -49,7 +50,22 @@ impl Context {
     }
 
     /// This is called when I receive an aggregate pvss vector from someone for a future round
-    pub async fn new_sharing_ready(&mut self, epoch: Epoch, pvec: AggregatePVSS, proof: DecompositionProof) {
-        log::warn!("New sharing for epoch {} ready: Not yet implemented", epoch);
+    pub async fn new_sharing_ready(&mut self, origin: Replica, pvec: AggregatePVSS, proof: DecompositionProof) {
+        if let Some(err) = self.config.pvss_ctx.decomp_verify(&pvec, &proof, &self.pub_key_map) {
+            log::warn!("Got an incorrect aggregation {:?}", err);
+            return;
+        }
+        // Add pvss_sharing to the config
+        if let Some(err) = self.config.pvss_ctx.pverify(&pvec) {
+            log::warn!("Got an incorrect aggregation; pverify failed {:?}", err);
+            return;
+        }
+        // Add this for this node's next epoch
+        let h = crypto::hash::ser_and_hash(&pvec);
+        let mut queue = self.config.beacon_sharing_buffer.remove(&origin).unwrap();
+        queue.push_back(h);
+        self.config.beacon_sharing_buffer.insert(origin, queue);
+        self.config.sharings.insert(h, pvec);
+        self.my_decomps.insert(h, proof);
     }
 }

@@ -63,9 +63,6 @@ impl Context {
             ProtocolMsg::BeaconReady(ep, b) => {
                 self.on_recv_beacon(ep, b, dq).await;
             }
-            ProtocolMsg::PVSSSharingReady(ep, pvec, dp) => {
-                
-            }
             _x => log::info!("Unimplemented {:?}", _x),
         }
     }
@@ -79,14 +76,14 @@ impl Context {
                 self.propose_timeout = true;
             }
             Event::VoteTimeout(block_hash) => self.do_sync_vote(block_hash, dq).await,
-            Event::SyncCommit => self.start_sync_commit(dq).await,
+            Event::SyncCommit(e) => self.start_sync_commit(e, dq).await,
             Event::ResponsiveCommitTimeout => {
                 self.responsive_timeout = true;
             },
             Event::SyncCommitTimeout => {
                 self.sync_commit_timeout = true;
             },
-            Event::SyncTimer => self.try_sync_commit(dq).await,
+            Event::SyncTimer(e) => self.try_sync_commit(dq).await,
             // _ => {
             //     log::warn!("Event not supposed to occur");
             // }
