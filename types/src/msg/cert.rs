@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use types_upstream::WireReady;
 use crate::{Epoch, Vote};
 use crypto::hash::Hash;
 
@@ -32,7 +33,12 @@ pub struct SyncCertMsg {
     pub cert: Certificate,
 }
 
-
+/// Used in creating proposals and checking
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CertType{
+    Resp(ResponsiveCertMsg),
+    Sync(SyncCertMsg),
+}
 
 impl Certificate {
     pub const fn empty_cert() -> Self {
@@ -58,5 +64,27 @@ impl Certificate {
 impl std::default::Default for Certificate {
     fn default() -> Self {
         Certificate::empty_cert()
+    }
+}
+
+impl WireReady for ResponsiveCertMsg {
+    fn init(self) -> Self {
+        self
+    }
+
+    fn from_bytes(data: &[u8]) -> Self {
+        let c:ResponsiveCertMsg = bincode::deserialize(&data).expect("failed to decode the responsive certificate");
+        c
+    }
+}
+
+impl WireReady for SyncCertMsg {
+    fn init(self) -> Self {
+        self
+    }
+
+    fn from_bytes(data: &[u8]) -> Self {
+        let c:SyncCertMsg = bincode::deserialize(&data).expect("failed to decode the responsive certificate");
+        c
     }
 }

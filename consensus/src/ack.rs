@@ -7,6 +7,10 @@ use types::{AckMsg, Certificate, ProtocolMsg, Vote};
 impl Context {
     /// do ack; Send ack to all the nodes
     pub async fn do_ack(&mut self, ack: AckMsg, dq:&mut DelayQueue<Event>) {
+        if ack.epoch != self.epoch {
+            log::warn!("Stale ack received");
+            return;
+        }
         let mut cert = Certificate::empty_cert();
         let hash = ser_and_hash(&ack).to_vec();
         cert.add_vote(Vote{ 
@@ -36,8 +40,8 @@ impl Context {
         self.ack_votes.add_vote(vote.votes[0].clone());
 
         // Do we have enough votes to trigger the next step?
-        if self.ack_votes.votes.len() > self.optimistic() {
-            self.handle_event(Event::ResponsiveCommit, dq).await;
+        if self.ack_votes.votes.len() >= self.optimistic() {
+            self.do_responsive_commit(dq).await;
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::Block;
-use crate::{Epoch, Certificate};
+use crate::{CertType, Certificate, Epoch};
 use types_upstream::WireReady;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Proposal {
     /// The block in the proposal
     pub new_block: Block,
-    pub highest_certificate: Certificate,
+    pub highest_certificate: CertType,
     pub epoch: Epoch,
 }
 
@@ -15,7 +15,7 @@ impl Proposal {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let c: Proposal = bincode::deserialize(&bytes)
             .expect("failed to decode the propose");
-        c
+        c.init()
     }
 }
 

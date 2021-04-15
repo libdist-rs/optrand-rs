@@ -13,6 +13,8 @@ mod vote;
 mod ack;
 mod commit;
 mod util;
+mod reconstruction;
+mod status;
 
 mod test;
 

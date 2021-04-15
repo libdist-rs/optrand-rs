@@ -15,10 +15,10 @@ impl Context {
         log::info!("Epoch {} ended, waiting for another epoch", self.epoch);
         self.epoch += 1;
         // Commit block from epoch e-t
-        if self.epoch > self.num_faults() {
-            let cb = self.storage.all_delivered_blocks_by_ht[&(self.epoch-self.num_faults())].clone();
-            self.commit_from_block(cb);
-        }
+        // if self.epoch > self.num_faults() {
+        //     let cb = self.storage.all_delivered_blocks_by_ht[&(self.epoch-self.num_faults())].clone();
+        //     self.commit_from_block(cb);
+        // }
         // Reset variables for this epoch
         self.epoch_reset();
         // self.epoch_timer = self.epoch_timer + tokio::time::Duration::from_millis(11*self.config.delta);
@@ -28,7 +28,13 @@ impl Context {
         // Update leader of this epoch
         self.last_leader = self.next_leader();
         log::debug!("Sending PVSS Vector to the next leader {}", self.last_leader);
-        
+
+        let mut queue = self.config.rand_beacon_queue.remove(&self.last_leader).unwrap();
+        let first_vec_hash = queue.pop_front().unwrap();
+        self.config.rand_beacon_queue.insert(self.last_leader, queue);
+        let first_vec = self.config.sharings.remove(&first_vec_hash).unwrap();
+        self.current_round_reconstruction_vector = Some(Arc::new(first_vec));
+
         // Send a new PVSS vector to the leader
         let pvec = self.config.pvss_ctx.generate_shares(&self.my_secret_key, &mut crypto::std_rng());
         // If I am not the leader send a fresh sharing to the current leader
@@ -45,9 +51,8 @@ impl Context {
             self.net_send.send(
                 (self.last_leader, Arc::new(
                     ProtocolMsg::RawStatus(
-                        self.epoch-1,
-                        self.locked_block.height,
-                        self.highest_cert.as_ref().clone()
+                        self.highest_block.height,
+                        self.highest_cert.clone()
                     )
                 ))
             ).unwrap();
@@ -60,7 +65,7 @@ impl Context {
         self.pvss_shares.push(pvec);
         self.pvss_indices.push(self.config.id);
         // Do I need to wait 2\Delta before proposing?
-        if self.locked_block.height < self.epoch-1 {
+        if self.highest_block.height < self.epoch-1 {
             dq.insert(Event::Propose, Duration::from_millis(self.config.delta*2));
             return;
         }

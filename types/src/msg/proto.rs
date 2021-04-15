@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{AckMsg, Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveCertMsg, ResponsiveVote, SignedShard, SyncCertMsg, SyncVote};
+use crate::{AckMsg, CertType, Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveCertMsg, ResponsiveVote, SignedShard, SyncCertMsg, SyncVote};
 use types_upstream::{WireReady};
 use crypto::{AggregatePVSS, Beacon, DecompositionProof, Decryption, PVSSVec, hash::ser_and_hash};
 
@@ -11,9 +11,9 @@ pub enum ProtocolMsg {
     BeaconReady(Epoch, Beacon),
 
     /// Used internally for networking
-    RawStatus(Epoch, Height, Certificate),
+    RawStatus(Height, CertType),
     /// Status message contains a certificate > 1 signatures
-    Status(Epoch, Height, Certificate),
+    Status(Height, CertType),
 
     /// RawEpochPVSSSharing used internally on the wire
     RawEpochPVSSSharing(PVSSVec),
@@ -68,6 +68,7 @@ pub enum ProtocolMsg {
     DeliverAckCert(Vec<u8>, Vec<u8>),
 
     /// Network level Beacon Share
+    /// Contains the epoch for the share and the decryption itself
     RawBeaconShare(Epoch, Decryption),
     /// Semantically valid beacon share
     BeaconShare(Epoch, Decryption),
@@ -94,12 +95,8 @@ impl WireReady for ProtocolMsg {
     fn init(self) -> Self {
         // log::info!("Transforming {:?}", self);
         match self {
-            ProtocolMsg::RawStatus(t, x, c) => {
-                if c.len() > 1 {
-                    ProtocolMsg::Status(t,x,c)
-                } else {
-                    ProtocolMsg::InvalidMessage
-                }
+            ProtocolMsg::RawStatus(x, c) => {
+                ProtocolMsg::Status(x,c)
             },
             ProtocolMsg::RawEpochPVSSSharing( y) => {
                 if y.encs.len() != y.comms.len() {
@@ -125,12 +122,8 @@ impl WireReady for ProtocolMsg {
             ProtocolMsg::RawBeaconReady(x,y) => 
                 ProtocolMsg::BeaconReady(x,y),
             ProtocolMsg::RawPropose(p,z_pa, decomp) => {
-                // let p = p.init();
+                let p = p.init();
                 log::info!("Got a propose message");
-                if p.highest_certificate.msg != p.new_block.parent_hash {
-                    log::warn!("Rejecting propose message because parent_hash is not the message of the highest certificate");
-                    return ProtocolMsg::InvalidMessage;
-                }
                 if p.new_block.aggregate_pvss.encs.len() != p.new_block.aggregate_pvss.comms.len() {
                     log::warn!("Rejecting propose beacuse pvss encs len != pvss comms len");
                     return ProtocolMsg::InvalidMessage;

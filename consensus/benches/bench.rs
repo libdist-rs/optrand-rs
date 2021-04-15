@@ -17,7 +17,7 @@ fn tree_get_dummy_acc<T: Serialize>(
     data: &T,
 ) -> (Vec<Vec<u8>>, DataWithAcc) {
     let shards = to_shards(
-        &to_bytes(data),
+        to_bytes(data),
         cx_num_nodes as usize,
     );
     let size = get_size(cx_num_nodes) as usize;

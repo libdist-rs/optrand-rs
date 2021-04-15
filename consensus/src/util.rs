@@ -1,5 +1,5 @@
 use crate::{Context, ShareGatherer};
-use types::{Replica, GENESIS_BLOCK, ProtocolMsg, Storage, Certificate};
+use types::{Replica, GENESIS_BLOCK, ProtocolMsg, Storage, Certificate, CertType, SyncCertMsg, SyncVote};
 use std::sync::Arc;
 use crypto::DecompositionProof;
 use config::Node;
@@ -25,8 +25,7 @@ impl Context {
             /// is of height 0 and its author is replica 0
             epoch: 0,
             last_leader: 0,
-            locked_block: genesis_block.clone(),
-            highest_cert: Arc::new(Certificate::empty_cert()),
+            highest_block: genesis_block.clone(),
             last_leader_epoch: 0,
 
             propose_shard_self_sent: false,
@@ -59,6 +58,21 @@ impl Context {
             ack_msg: None,
             started_sync_timer: false,
             epoch_block_lock: None,
+            reconstruction_shares: vec![None; n],
+            num_shares: 0,
+            last_reconstruction_round: 0,
+            current_round_reconstruction_vector: None,
+            propose_received: None,
+            resp_cert_received: None,
+            sync_cert_received: None,
+            highest_committed_block: genesis_block.clone(),
+            highest_cert: CertType::Sync(SyncCertMsg{
+                cert: Certificate::empty_cert(),
+                sync_vote: SyncVote{
+                    block_hash: genesis_block.hash,
+                    epoch: 0,
+                }
+            }),
         };
         for k in c.config.sharings.keys() {
             let decomps = (0..c.config.num_nodes).map(|_i| {
@@ -79,9 +93,6 @@ impl Context {
             .committed_blocks_by_ht
             .insert(0, genesis_block);
         c.pub_key_map = c.config.get_public_key_map();
-        let mut highest_cert = Certificate::empty_cert();
-        highest_cert.msg = GENESIS_BLOCK.hash.to_vec();
-        c.highest_cert = Arc::new(highest_cert);
         c
     }
 
@@ -141,6 +152,11 @@ impl Context {
         self.sync_commit_timeout = false;
         self.started_sync_timer = false;
         self.epoch_block_lock = None;
+        self.num_shares = 0;
+        self.reconstruction_shares = vec![None; self.num_nodes()];
+        self.propose_received = None;
+        self.resp_cert_received = None;
+        self.sync_cert_received = None;
     }
 
     /// Compute 3n/4+1 

@@ -14,8 +14,6 @@ pub enum Event {
     ProposeTimeout,
     /// VoteTimeout to send or not to send synchronous vote messages on the block hash
     VoteTimeout(Hash),
-    /// Reponsive commit event triggered when 3/4 acks are observed
-    ResponsiveCommit,
     /// Sync commit event is triggered when sync cert is observed
     SyncCommit,
     /// Responsive Commit Timeout; Do not commit blocks after this
@@ -33,7 +31,6 @@ impl Event {
             Event::EpochEnd => "Epoch Ended",
             Event::ProposeTimeout => "Propose Timed out",
             Event::VoteTimeout(_) => "Vote Timed out",
-            Event::ResponsiveCommit => "Responsively Committing epoch",
             Event::ResponsiveCommitTimeout => "Responsive Commit timed out", 
             Event::SyncCommit => "Synchronously committing epoch",
             Event::SyncCommitTimeout => "Sync Commit timed out",

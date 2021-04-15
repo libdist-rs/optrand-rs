@@ -1,12 +1,12 @@
 use super::accumulator::ShareGatherer;
 
-use crypto::{DecompositionProof, PVSSVec, hash::Hash};
+use crypto::{AggregatePVSS, DecompositionProof, Decryption, PVSSVec, hash::Hash};
 use fnv::FnvHashMap as HashMap;
 
-use tokio::{sync::mpsc::UnboundedSender, time::Instant};
+use tokio::sync::mpsc::UnboundedSender;
 use config::Node;
 use std::sync::Arc;
-use types::{Block, Certificate, Epoch, GENESIS_BLOCK, Height, ProtocolMsg, Replica, Storage, AckMsg};
+use types::{AckMsg, Block, CertType, Certificate, Epoch, Proposal, ProtocolMsg, Replica, ResponsiveCertMsg, Storage, SyncCertMsg};
 
 pub struct Context {
     /// Our config file from the command line
@@ -38,11 +38,13 @@ pub struct Context {
     /// The current leader
     pub last_leader: Replica,
     /// The latest certificate seen. NOTE that the highest_cert and the locked block are updated at the same time.
-    pub highest_cert: Arc<Certificate>,
+    pub highest_cert: CertType,
     /// The locked block. NOTE that the locked_block and the highest_cert are updated at the same time.
-    pub locked_block: Arc<Block>,
+    pub highest_block: Arc<Block>,
     /// The first block observed for this epoch
     pub epoch_block_lock: Option<Arc<Block>>,
+    /// The highest committed block
+    pub highest_committed_block: Arc<Block>,
 
     /// This is the last epoch I was a leader of
     pub last_leader_epoch: Epoch,
@@ -67,6 +69,13 @@ pub struct Context {
     pub resp_cert_received_directly: bool,
     // Whether we received objects directly
     pub sync_cert_received_directly: bool,
+
+    /// Whether we should stop processing deliver messages
+    pub propose_received: Option<Arc<Proposal>>,
+    /// Whether we should stop processing deliver messages
+    pub resp_cert_received: Option<Arc<ResponsiveCertMsg>>,
+    /// Whether we should stop processing deliver messages
+    pub sync_cert_received: Option<Arc<SyncCertMsg>>,
 
     /// Should we vote for this epoch or not?
     pub is_epoch_correct: bool,
@@ -99,4 +108,14 @@ pub struct Context {
     pub ack_votes: Certificate,
     /// The ack message for which we got these votes
     pub ack_msg: Option<AckMsg>,
+
+    /// Valid secret shares received to reconstruct for this round
+    pub reconstruction_shares: Vec<Option<Decryption>>,
+    /// Number of shares in reconstruction shares
+    pub num_shares: usize,
+    /// Last epoch for which we finished reconstruction
+    /// This is used to determine whether or not to do reconstruction when entering a new epoch
+    pub last_reconstruction_round: Epoch,
+    /// The vector which we are supposed to reconstruct for this round
+    pub current_round_reconstruction_vector: Option<Arc<AggregatePVSS>>,
 }

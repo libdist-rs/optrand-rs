@@ -15,6 +15,7 @@ impl Context {
         if self.propose_timeout || self.equivocation_detected {
             return;
         }
+        log::debug!("Block_hash: {:?}", p.new_block.hash);
         let resp_vote = ResponsiveVote{
             block_hash: p.new_block.hash,
             epoch: self.epoch,
@@ -63,16 +64,21 @@ impl Context {
     }
 
     pub async fn receive_resp_vote(&mut self, resp_vote: ResponsiveVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
-        log::info!("Got a responsive vote");
         // Check if the vote is valid
         let hash = ser_and_hash(&resp_vote).to_vec();
+        log::debug!("Got a responsive vote {:?} for hash {:?} with {:?}", cert, hash, resp_vote);
         if self.id() != cert.votes[0].origin &&
             !self.pub_key_map[&cert.votes[0].origin].verify(&hash, &cert.votes[0].auth) {
                 log::warn!("Invalid vote {:?} received: {:?}", resp_vote,cert);
                 return;
         }
+        if cert.msg != hash {
+            log::warn!("Invalid resp vote received");
+            return;
+        }
         if self.resp_votes.votes.len() == 0 {
             self.resp_votes.msg = hash;
+            log::info!("Hash of the resp vote certificate set");
         } 
         self.resp_votes.add_vote(cert.votes.remove(0));
         if self.resp_votes.votes.len() < self.optimistic() {
@@ -81,7 +87,7 @@ impl Context {
         // We have optimistic conditions
         let msg = ResponsiveCertMsg{
             cert: self.resp_votes.clone(),
-            resp_vote: resp_vote,
+            resp_vote,
         };
         let (shards, acc) = get_acc(&self, &msg);
         self.net_send.send((self.num_nodes(), 

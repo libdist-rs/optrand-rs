@@ -33,11 +33,27 @@ impl Context {
             }
             // I got a responsive certificate
             ProtocolMsg::ResponsiveCert(msg, acc) => {
-                // self.on_
+                self.receive_resp_cert_direct(msg, acc, dq).await;
+            }
+            // I got a deliver msg for responsive certificate
+            ProtocolMsg::DeliverResponsiveCert(shard, auth,origin) => {
+                self.do_receive_resp_cert_deliver(shard, auth, origin, dq).await;
+            }
+            // I got a synchronous certificate
+            ProtocolMsg::SyncCert(msg, acc) => {
+                self.receive_sync_cert_direct(msg, acc, dq).await;
+            }
+            // I got a deliver msg for responsive certificate
+            ProtocolMsg::DeliverSyncCert(shard, auth,origin) => {
+                self.do_receive_sync_cert_deliver(shard, auth, origin, dq).await;
             }
             // I got an ack message
             ProtocolMsg::Ack(msg, vote) => {
                 self.on_recv_ack(msg, vote, dq).await;
+            }
+            // I got a status message
+            ProtocolMsg::Status(ht, cert) => {
+                self.do_receive_status(ht, cert).await;
             }
             _x => log::info!("Unimplemented {:?}", _x),
         }
@@ -52,7 +68,6 @@ impl Context {
                 self.propose_timeout = true;
             }
             Event::VoteTimeout(block_hash) => self.do_sync_vote(block_hash, dq).await,
-            Event::ResponsiveCommit => self.do_responsive_commit(dq).await,
             Event::SyncCommit => self.start_sync_commit(dq).await,
             Event::ResponsiveCommitTimeout => {
                 self.responsive_timeout = true;

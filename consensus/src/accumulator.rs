@@ -1,19 +1,26 @@
 use super::context::Context;
+use bytes::{Bytes, BytesMut};
 use crypto::*;
 use crypto_lib::PublicKey;
 use reed_solomon_erasure::galois_8::ReedSolomon;
 use serde::{Deserialize, Serialize};
+use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 use types::{DataWithAcc, Replica, SignedShard, Certificate, Vote};
 use util::io::to_bytes;
 
-pub fn to_shards(data: &[u8], num_nodes: usize) -> Vec<Vec<u8>> {
-    let num_data_shards = (num_nodes/4) + 1;// (num_nodes/4) + 1
-    let num_faults = num_nodes - num_data_shards;
-    let shard_size = (data.len() + num_data_shards - 1) / num_data_shards;
-    let mut data_with_suffix = data.to_vec();
-    let suffix_size = shard_size * num_data_shards - data.len();
+pub fn to_shards(data: Vec<u8>, num_nodes: usize) -> Vec<Vec<u8>> {
+    let num_faults = (num_nodes/4)+1;
+    let num_data_shards = num_nodes - num_faults;
+    // Change data here
+    let mut encoder  = LengthDelimitedCodec::new();
+    let mut new_data = BytesMut::with_capacity(data.len());
+    let buf = Bytes::from(data);
+    encoder.encode(buf, &mut new_data).unwrap();
+    let shard_size = (new_data.len() + num_data_shards - 1) / num_data_shards;
+    let mut data_with_suffix = new_data.to_vec();
+    let suffix_size = shard_size * num_data_shards - new_data.len();
     for _ in 0..suffix_size {
-        data_with_suffix.push(suffix_size as u8)
+        data_with_suffix.push(0 as u8)
     }
     let mut result = Vec::with_capacity(num_nodes);
     for shard in 0..num_data_shards {
@@ -27,7 +34,9 @@ pub fn to_shards(data: &[u8], num_nodes: usize) -> Vec<Vec<u8>> {
     result
 }
 
-pub fn from_shards(mut data: Vec<Option<Vec<u8>>>, num_nodes: usize, num_faults: usize) -> Vec<u8> {
+pub fn from_shards(mut data: Vec<Option<Vec<u8>>>, num_nodes: usize) -> Vec<u8> {
+    let num_faults = (num_nodes/4)+1;
+
     let num_data_shards = num_nodes - num_faults;
     let r = ReedSolomon::new(num_data_shards, num_faults).unwrap();
     r.reconstruct(&mut data).unwrap();
@@ -35,8 +44,11 @@ pub fn from_shards(mut data: Vec<Option<Vec<u8>>>, num_nodes: usize, num_faults:
     for shard in 0..num_data_shards {
         result.append(&mut data[shard].clone().unwrap());
     }
-    result.truncate(result.len() - *result.last().unwrap() as usize);
-    result
+    let mut decoder = LengthDelimitedCodec::new();
+    let mut buf = BytesMut::from(&result[..]);
+    decoder.decode(&mut buf).unwrap().unwrap().freeze().to_vec()
+    // result.truncate(result.len() - *result.last().unwrap() as usize);
+    // result
 }
 
 
@@ -44,15 +56,15 @@ pub fn from_shards(mut data: Vec<Option<Vec<u8>>>, num_nodes: usize, num_faults:
 mod tests {
     #[test]
     fn shards() {
-        const SIZE: usize = 1024 * 1024;
+        const SIZE: usize = 1024;
         let mut array = [0 as u8; SIZE];
         for i in 0..SIZE {
             array[i] = crypto::rand::random();
         }
-        let shards = super::to_shards(&array, 4);
+        let shards = super::to_shards(array.to_vec(), 4);
         let mut received: Vec<_> = shards.iter().cloned().map(Some).collect();
         received[0] = None;
-        let reconstructed = super::from_shards(received, 4, 1);
+        let reconstructed = super::from_shards(received, 4);
         assert_eq!(array.to_vec(), reconstructed);
     }
 }
@@ -80,7 +92,7 @@ pub fn check_valid(new_acc: &[Vec<u8>], acc: &DataWithAcc, pk: &crypto_lib::Publ
 /// get_acc returns shards for every node and the signed merkle tree root
 pub fn get_acc<T: Serialize>(cx: &Context, data: &T) -> (Vec<Vec<u8>>, DataWithAcc) {
     let shards = to_shards(
-        &to_bytes(data),
+        to_bytes(data),
         cx.num_nodes(),
     );
     let size = get_size(cx.num_nodes()) as usize;
@@ -114,8 +126,8 @@ pub fn get_acc<T: Serialize>(cx: &Context, data: &T) -> (Vec<Vec<u8>>, DataWithA
 /// get_acc returns shards for every node and the signed merkle tree root
 pub fn get_acc_with_shard<T: Serialize>(cx: &Context, data: &T, auth: SignedShard) -> (Vec<Vec<u8>>, DataWithAcc) {
     let shards = to_shards(
-        &to_bytes(data),
-        cx.num_nodes() as usize,
+        to_bytes(data),
+        cx.num_nodes(),
     );
     let size = get_size(cx.num_nodes()) as usize;
     let mut tree = vec![Vec::new(); (1 << size) + 1];
@@ -139,7 +151,7 @@ pub fn get_acc_with_shard<T: Serialize>(cx: &Context, data: &T, auth: SignedShar
 
 pub fn get_tree<T: Serialize>(n:Replica,data: &T) -> Vec<Vec<u8>> {
     let shards = to_shards(
-        &to_bytes(data),
+        to_bytes(data),
         n,
     );
     let size = get_size(n) as usize;
@@ -256,7 +268,6 @@ impl ShareGatherer {
         Some(from_shards(
             self.shard.clone(),
             num_nodes as usize,
-            num_faults as usize,
         ))
     }
 }

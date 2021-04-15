@@ -3,7 +3,6 @@ use config::Node;
 use std::time::Duration;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::time;
 use types::{ProtocolMsg, Replica};
 use tokio_util::time::DelayQueue;
 use tokio_stream::StreamExt;

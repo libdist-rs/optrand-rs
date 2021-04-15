@@ -1,6 +1,6 @@
 use crypto::{AggregatePVSS, hash::{Hash, EMPTY_HASH}};
 use serde::{Deserialize, Serialize};
-use crate::Height;
+use crate::{Height, Replica};
 use types_upstream::WireReady;
 
 // #[derive(Serialize, Deserialize, Clone)]
