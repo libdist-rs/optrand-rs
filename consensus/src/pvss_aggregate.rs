@@ -1,5 +1,5 @@
-use crypto::PVSSVec;
-use types::{ProtocolMsg, Replica};
+use crypto::{AggregatePVSS, DecompositionProof, PVSSVec};
+use types::{Epoch, ProtocolMsg, Replica};
 use std::sync::Arc;
 
 use crate::Context;
@@ -27,6 +27,7 @@ impl Context {
         self.config.sharings.insert(h, comb_pvss);
     }
 
+    /// This is called when sharings are sent to me to propose in the next round
     pub async fn new_epoch_sharing(&mut self, sender: Replica, pvec: PVSSVec) {
         let num_shares = self.pvss_shares.len();
         // These shares are meant for me to propose in the next round
@@ -45,5 +46,10 @@ impl Context {
             // Aggregate them
             self.do_aggregation().await;
         }
+    }
+
+    /// This is called when I receive an aggregate pvss vector from someone for a future round
+    pub async fn new_sharing_ready(&mut self, epoch: Epoch, pvec: AggregatePVSS, proof: DecompositionProof) {
+        log::warn!("New sharing for epoch {} ready: Not yet implemented", epoch);
     }
 }

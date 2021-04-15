@@ -17,7 +17,7 @@ impl Context {
 
         let pvec = self.config.sharings[&pvec_hash].clone();
         let mut new_block = Block::new(pvec);
-        new_block.height = self.highest_height + 1;
+        new_block.height = self.locked_block.height + 1;
         new_block.parent_hash = self.locked_block.hash;
         new_block.hash = new_block.compute_hash();
 
@@ -58,7 +58,6 @@ impl Context {
         if !self.propose_shard_self_sent {
             self.deliver_propose_self(shards[myid].clone(), 
                 my_shard_auth.clone()).await;
-            self.propose_shard_self_sent = true;
         }
         if self.propose_shard_others_sent {
             return;
@@ -113,6 +112,7 @@ impl Context {
         let shards = to_shards(&to_bytes(&p), self.num_nodes());
         self.do_deliver_propose(&cert, shards).await;
         self.do_vote(&p, dq).await;
+        self.storage.add_new_block(p.new_block);
     }
 
     pub async fn do_receive_propose_deliver(&mut self, shard: Vec<u8>, auth: SignedShard, origin: Replica) {
@@ -152,5 +152,6 @@ impl Context {
             self.config.sharings.insert(hash, p.new_block.aggregate_pvss.clone());
         }
         // We have checked and confirmed that the pvss sharing is okay
+        self.storage.add_new_block(p.new_block);
     }
 }

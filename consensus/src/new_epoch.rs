@@ -14,11 +14,17 @@ impl Context {
     pub async fn new_epoch(&mut self, dq: &mut DelayQueue<Event>) {
         log::info!("Epoch {} ended, waiting for another epoch", self.epoch);
         self.epoch += 1;
+        // Commit block from epoch e-t
+        if self.epoch > self.num_faults() {
+            let cb = self.storage.all_delivered_blocks_by_ht[&(self.epoch-self.num_faults())].clone();
+            self.commit_from_block(cb);
+        }
         // Reset variables for this epoch
         self.epoch_reset();
-        self.epoch_timer = self.epoch_timer + tokio::time::Duration::from_millis(11*self.config.delta);
+        // self.epoch_timer = self.epoch_timer + tokio::time::Duration::from_millis(11*self.config.delta);
         dq.insert(Event::EpochEnd, Duration::from_millis(11*self.config.delta));
         dq.insert(Event::ProposeTimeout, Duration::from_millis(4*self.config.delta));
+        dq.insert(Event::ResponsiveCommitTimeout, Duration::from_millis(9*self.config.delta));
         // Update leader of this epoch
         self.last_leader = self.next_leader();
         log::debug!("Sending PVSS Vector to the next leader {}", self.last_leader);
@@ -40,7 +46,7 @@ impl Context {
                 (self.last_leader, Arc::new(
                     ProtocolMsg::RawStatus(
                         self.epoch-1,
-                        self.highest_height,
+                        self.locked_block.height,
                         self.highest_cert.as_ref().clone()
                     )
                 ))
@@ -49,12 +55,12 @@ impl Context {
         } 
         
         // I am the leader
-        self.last_leader_epoch = self.epoch; // This is the last epoch I was a leader of
+        self.last_leader_epoch = self.epoch;
         // First push my own sharing to the next proposal
         self.pvss_shares.push(pvec);
         self.pvss_indices.push(self.config.id);
         // Do I need to wait 2\Delta before proposing?
-        if self.highest_height < self.epoch-1 {
+        if self.locked_block.height < self.epoch-1 {
             dq.insert(Event::Propose, Duration::from_millis(self.config.delta*2));
             return;
         }

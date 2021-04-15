@@ -16,7 +16,6 @@ pub async fn reactor(
     let mut cx = Context::new(config, net_send);
     let delta = cx.delta();
     // A little time to boot everything up
-    cx.epoch_timer = time::Instant::now() + Duration::from_millis(delta);
     let mut delay_queue:DelayQueue<_> = DelayQueue::new();
     delay_queue.insert(Event::EpochEnd, Duration::from_millis(11*delta));
     loop {
