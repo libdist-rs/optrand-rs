@@ -18,11 +18,21 @@ pub struct ResponsiveVote {
     pub block_hash: Hash,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct SyncVote {
-    pub epoch: Epoch, 
-    pub block_hash: Hash,
+pub type SyncVote = ResponsiveVote;
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ResponsiveCertMsg {
+    pub resp_vote: ResponsiveVote,
+    pub cert: Certificate,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SyncCertMsg {
+    pub sync_vote: SyncVote, 
+    pub cert: Certificate,
+}
+
+
 
 impl Certificate {
     pub const fn empty_cert() -> Self {

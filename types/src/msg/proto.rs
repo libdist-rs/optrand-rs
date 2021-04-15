@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveVote, SignedShard, SyncVote};
+use crate::{AckMsg, Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveCertMsg, ResponsiveVote, SignedShard, SyncCertMsg, SyncVote};
 use types_upstream::{WireReady};
 use crypto::{AggregatePVSS, Beacon, DecompositionProof, Decryption, PVSSVec, hash::ser_and_hash};
 
@@ -42,11 +42,18 @@ pub enum ProtocolMsg {
     ResponsiveVoteMsg(ResponsiveVote, Certificate),
 
     /// Network level responsive certificate
-    RawResponsiveCert(Certificate, Epoch),
+    RawResponsiveCert(ResponsiveCertMsg, DataWithAcc),
     /// Semantically valid responsive certificate
-    ResponsiveCert(Certificate, Epoch),
+    ResponsiveCert(ResponsiveCertMsg, DataWithAcc),
     /// Deliver responsive certificate delivers (my shard, your shard) for the responsive certificate
-    DeliverResponsiveCert(Vec<u8>, Vec<u8>),
+    DeliverResponsiveCert(Vec<u8>, SignedShard, Replica),
+
+    /// Network level sync certificate
+    RawSyncCert(SyncCertMsg, DataWithAcc),
+    /// Semantically valid sync certificate
+    SyncCert(SyncCertMsg, DataWithAcc),
+    /// Deliver responsive certificate delivers (my shard, your shard) for the responsive certificate
+    DeliverSyncCert(Vec<u8>, SignedShard, Replica),
 
     /// Network level Sync Vote
     /// contains (Epoch, Certificate)
@@ -55,9 +62,9 @@ pub enum ProtocolMsg {
     SyncVoteMsg(SyncVote, Certificate),
     
     /// Network level Ack Vote
-    RawAck(Epoch, Certificate),
+    RawAck(AckMsg, Certificate),
     /// Semantically valid ack message guarantees that there is only vote in the certificate
-    Ack(Epoch, Certificate),
+    Ack(AckMsg, Certificate),
     DeliverAckCert(Vec<u8>, Vec<u8>),
 
     /// Network level Beacon Share
@@ -148,6 +155,8 @@ impl WireReady for ProtocolMsg {
             }
             ProtocolMsg::RawResponsiveCert(cert, ep) =>
                 ProtocolMsg::ResponsiveCert(cert, ep),
+            ProtocolMsg::RawSyncCert(cert, ep) =>
+                ProtocolMsg::SyncCert(cert, ep),
             ProtocolMsg::RawSyncVoteMsg(sv,cert) => {
                 if cert.len() != 1 {
                     ProtocolMsg::InvalidMessage

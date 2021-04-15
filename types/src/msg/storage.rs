@@ -23,4 +23,17 @@ impl Storage {
             committed_blocks_by_ht: HashMap::default(),
         }
     }
+
+    /// Adds a block to the storage
+    pub fn add_new_block(&mut self, b: Block) {
+        let b_arc = Arc::new(b);
+        self.all_delivered_blocks_by_hash.insert(b_arc.hash, b_arc.clone());
+        self.all_delivered_blocks_by_ht.insert(b_arc.height, b_arc);
+    }
+
+    /// Adds a block to the list of committed blocks
+    pub fn commit_new_block(&mut self, b_arc: Arc<Block>) {
+        self.committed_blocks_by_hash.insert(b_arc.hash, b_arc.clone());
+        self.committed_blocks_by_ht.insert(b_arc.height, b_arc);
+    }
 }
