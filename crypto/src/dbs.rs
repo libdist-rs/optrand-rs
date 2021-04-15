@@ -331,7 +331,7 @@ impl DbsContext {
         .map(|i| (i, Scalar::from(i as u64 + 1)))
         .collect();
         // OPTIMIZATIONS - Precompute (i-j)^-1 before hand
-        // This is (n-1)^2 pre-computations
+        // This is (n-1)^2 pre-computations, can be reduced to 2n pre-computations
         let secret = valid_share_indices
         .iter()
         .map(|&(i, _scalar_i)| {
@@ -352,4 +352,42 @@ impl DbsContext {
         .into_affine();
         Beacon(Bls12_381::pairing(secret, self.h2), secret)
     }
+
+    /// Check beacon checks if this is the correct beacon
+    pub fn check_beacon(&self, b: &Beacon, cvec: &[Commitment]) -> bool {
+        if Bls12_381::pairing(b.1, self.h2) != b.0 {
+            return false;
+        }
+        let mut counter = 0;
+        let mut com_vec = Vec::with_capacity(self.t+1);
+        for v in cvec {
+            if counter > self.t +1 {
+                break;
+            }
+            com_vec.push(v);
+            counter += 1;
+        }
+        let valid_share_indices: Vec<_> = (0..self.t+1)
+        .map(|i| (i, Scalar::from(i as u64 + 1)))
+        .collect();
+        let hs = valid_share_indices
+        .iter()
+        .map(|&(i, _scalar_i)| {
+            com_vec[i].mul(
+                valid_share_indices
+                    .iter()
+                    .map(|&(j, scalar_j)| {
+                        if j == i {
+                            Scalar::one()
+                        } else {
+                            scalar_j * self.lagrange_inverses[&(j,i)]
+                        }
+                    })
+                    .fold(Scalar::one(), |lambda, x| lambda * x),
+            )
+        })
+        .fold(G2::zero().into_projective(), |acc, x| acc + x)
+        .into_affine();
+        Bls12_381::pairing(b.1, self.h1) == Bls12_381::pairing(self.g, hs)
+    } 
 }

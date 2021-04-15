@@ -55,6 +55,17 @@ impl Context {
             ProtocolMsg::Status(ht, cert) => {
                 self.do_receive_status(ht, cert).await;
             }
+            // I got a beacon share
+            ProtocolMsg::BeaconShare(ep, sh) => {
+                self.on_recv_share(ep, sender, sh, dq).await;
+            }
+            // I got a reconstruction
+            ProtocolMsg::BeaconReady(ep, b) => {
+                self.on_recv_beacon(ep, b, dq).await;
+            }
+            ProtocolMsg::PVSSSharingReady(ep, pvec, dp) => {
+                
+            }
             _x => log::info!("Unimplemented {:?}", _x),
         }
     }

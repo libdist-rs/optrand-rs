@@ -1,6 +1,6 @@
 use super::accumulator::ShareGatherer;
 
-use crypto::{AggregatePVSS, DecompositionProof, Decryption, PVSSVec, hash::Hash};
+use crypto::{AggregatePVSS, DecompositionProof, Decryption, PVSSVec, Share, hash::Hash};
 use fnv::FnvHashMap as HashMap;
 
 use tokio::sync::mpsc::UnboundedSender;
@@ -110,7 +110,7 @@ pub struct Context {
     pub ack_msg: Option<AckMsg>,
 
     /// Valid secret shares received to reconstruct for this round
-    pub reconstruction_shares: Vec<Option<Decryption>>,
+    pub reconstruction_shares: Vec<Option<Share>>,
     /// Number of shares in reconstruction shares
     pub num_shares: usize,
     /// Last epoch for which we finished reconstruction

@@ -1,3 +1,4 @@
+use tokio::time::Duration;
 use tokio_util::time::DelayQueue;
 use types::{AckMsg, Certificate, DataWithAcc, ProtocolMsg, Replica, ResponsiveCertMsg, SignedShard, Vote, CertType};
 use std::sync::Arc;
@@ -5,6 +6,7 @@ use types_upstream::WireReady;
 use crypto::hash::ser_and_hash;
 use crate::{Context, Event, check_valid, get_acc_with_shard, get_sign, get_tree, to_shards};
 use util::io::to_bytes;
+
 
 impl Context {
     /// A function called on receiving a shard or on receiving the responsive certificate
@@ -86,7 +88,11 @@ impl Context {
             epoch: self.epoch,
         };
         self.do_ack(ack, dq).await;
-        // Update locked blocks: TODO
+        // We obtained a beacon for this, go to the next round
+        if self.last_reconstruction_round == self.epoch {
+            // To break recursion, we use the delay queue
+            dq.insert(Event::EpochEnd, Duration::from_millis(0));
+        }
     }
 
     /// Received a responsive certificate indirectly
@@ -121,6 +127,11 @@ impl Context {
             epoch: self.epoch,
         };
         self.do_ack(ack, dq).await;
+        // We obtained a beacon for this, go to the next round
+        if self.last_reconstruction_round == self.epoch {
+            // To break recursion, we use the delay queue
+            dq.insert(Event::EpochEnd, Duration::from_millis(0));
+        }
     }
 
     /// Received a deliver message for a responsive certificate

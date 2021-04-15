@@ -18,6 +18,8 @@ impl Context {
         }
         // Commit block and all its ancestors
         self.commit_all();
+        // Start reconstruction
+        self.do_reconstruction(self.epoch, dq).await;
     }
 
     /// Tries to start the sync commit timers
@@ -42,6 +44,7 @@ impl Context {
         }
         // Check if we already committed for this epoch
         self.commit_all();
+        log::info!("Check if called only once");
     }
 
     /// Commit current epoch and all its ancestors

@@ -34,6 +34,7 @@ impl Context {
         self.config.rand_beacon_queue.insert(self.last_leader, queue);
         let first_vec = self.config.sharings.remove(&first_vec_hash).unwrap();
         self.current_round_reconstruction_vector = Some(Arc::new(first_vec));
+        self.last_reconstruction_round = self.epoch-1;
 
         // Send a new PVSS vector to the leader
         let pvec = self.config.pvss_ctx.generate_shares(&self.my_secret_key, &mut crypto::std_rng());
