@@ -66,6 +66,7 @@ impl Context {
             log::debug!("Starting next epoch");
             dq.insert(Event::EpochEnd(self.epoch), Duration::from_nanos(1));
         }
+        self.num_shares = 0;
     }
 
     /// We received a beacon from someone else, handle it here
