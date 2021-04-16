@@ -24,7 +24,7 @@ idx=0
 
 for ip in "${IPS[@]}"
 do
-  scp arch@$ip:./output.log ./$idx.log &
+  scp arch@$ip:./output.log ./aws-$idx.log &
   idx=$(($idx+1))
 done
 
