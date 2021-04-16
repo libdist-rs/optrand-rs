@@ -15,7 +15,7 @@ impl Context {
         if self.equivocation_detected {
             return;
         }
-        log::info!("Responsively committing a block");
+        log::debug!("Responsively committing a block");
         // Commit block and all its ancestors
         let b = self.storage.all_delivered_blocks_by_hash[&bhash].clone();
         self.commit_from_block(b);
@@ -51,7 +51,7 @@ impl Context {
         }
         // Check if we already committed for this epoch
         self.commit_all(ht);
-        log::info!("Check if called only once");
+        log::debug!("Check if called only once");
     }
 
     /// Commit current epoch and all its ancestors
@@ -59,7 +59,7 @@ impl Context {
         if self.highest_committed_block.height >= ht {
             return;
         }
-        log::info!("Committing height {}", ht);
+        log::debug!("Committing height {}", ht);
         let b = self.storage.all_delivered_blocks_by_ht[&ht].clone();
         self.highest_committed_block = b.clone();
         self.commit_from_block(b)
@@ -82,7 +82,7 @@ impl Context {
     /// Commit_pvss will add the pvss vector to the internal queues
     fn commit_pvss(&mut self, b: &Arc<Block>) {
         let proposer = self.storage.proposer_map[&b.hash];
-        log::info!("Committing proposer {} PVSS block", proposer);
+        log::debug!("Committing proposer {} PVSS block", proposer);
         let hash = ser_and_hash(&b.aggregate_pvss);
         self.config.sharings.insert(hash, b.aggregate_pvss.clone());
         let mut queue = self.config.rand_beacon_queue.remove(&proposer).unwrap();

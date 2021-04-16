@@ -43,6 +43,7 @@ impl Context {
             is_epoch_correct: false,
             propose_timeout: false,
             equivocation_detected: false,
+            last_beacon_time: tokio::time::Instant::now(),
 
             propose_gatherer: ShareGatherer::new(n),
             resp_cert_gatherer: ShareGatherer::new(n),

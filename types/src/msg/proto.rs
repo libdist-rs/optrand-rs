@@ -123,7 +123,7 @@ impl WireReady for ProtocolMsg {
                 ProtocolMsg::BeaconReady(x,y),
             ProtocolMsg::RawPropose(e,p,z_pa, decomp) => {
                 let p = p.init();
-                log::info!("Got a propose message");
+                log::debug!("Got a propose message");
                 if p.new_block.aggregate_pvss.encs.len() != p.new_block.aggregate_pvss.comms.len() {
                     log::warn!("Rejecting propose beacuse pvss encs len != pvss comms len");
                     return ProtocolMsg::InvalidMessage;
@@ -131,7 +131,7 @@ impl WireReady for ProtocolMsg {
                 ProtocolMsg::Propose(e, p,z_pa, decomp)
             }
             ProtocolMsg::RawResponsiveVoteMsg(resp_vote, vote) => {
-                log::info!("Got vote message");
+                log::debug!("Got vote message");
                 if vote.len() != 1 {
                     log::warn!("Rejecting a vote message invalid vote len");
                     return ProtocolMsg::InvalidMessage;

@@ -48,7 +48,7 @@ impl Context {
         self.propose_received_directly = true;
         self.propose_received = Some(Arc::new(p.clone()));
         self.do_vote(&p, dq);
-        log::info!("Adding new block; {:?} for {}", p.new_block.height, p.epoch);
+        log::debug!("Adding new block; {:?} for {}", p.new_block.height, p.epoch);
         if self.epoch_block_lock.is_none() {
             self.epoch_block_lock = Some(Arc::new(p.new_block));
         }
@@ -92,7 +92,7 @@ impl Context {
 
     /// Receive proposal is called when a new proposal is received
     pub fn receive_proposal_direct(&mut self, e:Epoch, sender:Replica, p: Proposal, cert: DataWithAcc, decomp: DecompositionProof, dq: &mut DelayQueue<Event>) {
-        log::info!("Got a new proposal for {} directly", e);
+        log::debug!("Got a new proposal for {} directly", e);
         if e != self.epoch {
             log::warn!("Invalid epoch {} for proposal {}",e,self.epoch);
             return;
@@ -124,7 +124,7 @@ impl Context {
         self.propose_received_directly = true;
         self.propose_received = Some(Arc::new(p.clone()));
         self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
-        log::info!("Adding new block; {} for {}", p.new_block.height, p.epoch);
+        log::debug!("Adding new block; {} for {}", p.new_block.height, p.epoch);
     
         self.storage.add_new_block(p.new_block.clone());
         // Send shards to others
@@ -137,7 +137,7 @@ impl Context {
     }
 
     pub fn do_receive_propose_deliver(&mut self, e:Epoch, shard: Vec<u8>, auth: SignedShard, origin: Replica) {
-        log::info!("Got a new proposal IN-directly");
+        log::debug!("Got a new proposal IN-directly");
         if e != self.epoch {
             return;
         }
@@ -182,7 +182,7 @@ impl Context {
         // We have checked and confirmed that the pvss sharing is okay
         self.propose_received = Some(Arc::new(p.clone()));
         self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
-        log::info!("Adding new block; {} for {}", p.new_block.height, p.epoch);
+        log::debug!("Adding new block; {} for {}", p.new_block.height, p.epoch);
         self.storage.add_new_block(p.new_block.clone());
         if self.epoch_block_lock.is_none() {
             self.epoch_block_lock = Some(Arc::new(p.new_block));

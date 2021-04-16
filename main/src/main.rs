@@ -6,7 +6,7 @@ mod io;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let config = io::load_config();
-    log::info!(target:"app","Successfully decoded the config file");
+    log::debug!(target:"app","Successfully decoded the config file");
 
     // Build protocol networks
     let protocol_network =

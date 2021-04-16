@@ -15,7 +15,7 @@ impl Context {
         if self.epoch != e {
             return;
         }
-        log::info!("Epoch {} ended, waiting for another epoch", self.epoch);
+        log::debug!("Epoch {} ended, waiting for another epoch", self.epoch);
         self.epoch += 1;
         // Commit block from epoch e-t
         // if self.epoch > self.num_faults() {
@@ -32,7 +32,7 @@ impl Context {
         self.last_leader = self.next_leader();
         log::debug!("Sending PVSS Vector to the next leader {}", self.last_leader);
 
-        log::info!("Setting current round {} vector from Q for {}",self.epoch, self.last_leader);
+        log::debug!("Setting current round {} vector from Q for {}",self.epoch, self.last_leader);
         let mut queue = self.config.rand_beacon_queue.remove(&self.last_leader).unwrap();
         let pvec_hash = queue.pop_front().unwrap();
         let first_vec = self.config.sharings.get(&pvec_hash).unwrap().clone();

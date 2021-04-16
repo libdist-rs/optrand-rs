@@ -65,10 +65,10 @@ impl Context {
                 self.on_recv_share(ep, sender, sh, dq);
             }
             // I got a reconstruction
-            // ProtocolMsg::BeaconReady(ep, b) => {
-            //     self.on_recv_beacon(ep, b, dq).await;
-            // }
-            _x => log::info!("Unimplemented"),
+            ProtocolMsg::BeaconReady(ep, b) => {
+                self.on_recv_beacon(ep, b, dq);
+            }
+            _x => log::debug!("Unimplemented"),
         }
     }
 

@@ -3,7 +3,7 @@ use super::accumulator::ShareGatherer;
 use crypto::{AggregatePVSS, DecompositionProof, PVSSVec, Share, hash::Hash};
 use fnv::FnvHashMap as HashMap;
 
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::{sync::mpsc::UnboundedSender, time::Instant};
 use config::Node;
 use std::sync::Arc;
 use types::{AckMsg, Block, CertType, Certificate, Epoch, Proposal, ProtocolMsg, Replica, ResponsiveCertMsg, Storage, SyncCertMsg};
@@ -125,4 +125,7 @@ pub struct Context {
     pub future_messages2: HashMap<Epoch, (Replica, ProtocolMsg)>,
     /// Future messages for ack messages
     pub future_messages3: HashMap<Epoch, Vec<(Replica,ProtocolMsg)>>,
+
+    /// Last beacon time
+    pub last_beacon_time: Instant,
 }

@@ -78,7 +78,7 @@ impl Context {
         }
         if self.resp_votes.votes.len() == 0 {
             self.resp_votes.msg = hash;
-            log::info!("Hash of the resp vote certificate set");
+            log::debug!("Hash of the resp vote certificate set");
         } 
         self.resp_votes.add_vote(cert.votes.remove(0));
         if self.resp_votes.votes.len() < self.optimistic() {
@@ -98,7 +98,7 @@ impl Context {
     }
 
     pub fn receive_sync_vote(&mut self, sync_vote: SyncVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
-        log::info!("Got a sync vote");
+        log::debug!("Got a sync vote");
         // Check if the vote is valid
         let hash = ser_and_hash(&sync_vote).to_vec();
         if self.id() != cert.votes[0].origin &&

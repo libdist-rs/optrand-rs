@@ -3,7 +3,7 @@ use crypto::{Beacon, Decryption};
 use tokio_util::time::DelayQueue;
 use types::{Epoch, ProtocolMsg, Replica};
 use crate::{context::Context, events::Event};
-use tokio::time::Duration;
+use tokio::time::{Duration, Instant};
 
 impl Context {
     /// Start the reconstruction for this round, caller must ensure that this is invoked only once in every epoch
@@ -28,7 +28,7 @@ impl Context {
         // A Byzantine leader may send shares for later epochs to try to get the nodes to reconstruct, be careful here.
         // Did we already finish reconstruction for this epoch?
         // If we finished this round, discard extra stale shares
-        if ep != self.last_reconstruction_round + 1 {
+        if ep != self.epoch {
             return;
         }
         // Check for validity
@@ -43,9 +43,11 @@ impl Context {
             return;
         }
         // Time for reconstruction
-        log::info!("Trying reconstruction now");
+        log::debug!("Trying reconstruction now");
         let b= self.config.pvss_ctx.reconstruct(&self.reconstruction_shares);
-        log::info!("Got beacon");
+        let time_d = Instant::now().duration_since(self.last_beacon_time);
+        log::info!("Got {} beacon in {}", ep, time_d.as_millis());
+        self.last_beacon_time = Instant::now();
         self.finish_reconstruction(b, dq);
     }
 
@@ -60,8 +62,8 @@ impl Context {
         ).unwrap();
         // If elligible start the next epoch
         if self.highest_block.height == self.epoch {
-            log::info!("Ending epoch because of reconstruction");
-            log::info!("Starting next epoch");
+            log::debug!("Ending epoch because of reconstruction");
+            log::debug!("Starting next epoch");
             dq.insert(Event::EpochEnd(self.epoch), Duration::from_nanos(1));
         }
     }
@@ -76,6 +78,7 @@ impl Context {
             log::warn!("Incorrect beacon received");
             return;
         }
+        log::info!("Got {} beacon", ep);
         self.finish_reconstruction(b, dq);
     }
 }

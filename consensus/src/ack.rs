@@ -26,7 +26,7 @@ impl Context {
 
     /// What to do on receiving an ack from outside
     pub fn on_recv_ack(&mut self, ack: AckMsg, vote: Certificate, dq: &mut DelayQueue<Event>) {
-        log::info!("Got an ack message for epoch {}",ack.epoch);
+        log::debug!("Got an ack message for epoch {}",ack.epoch);
         let hash = ser_and_hash(&ack);
         // Check if this is a valid ack vote
         if self.id() != vote.votes[0].origin && !self.pub_key_map[&vote.votes[0].origin].verify(&hash, &vote.votes[0].auth) {
