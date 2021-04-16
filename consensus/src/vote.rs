@@ -9,7 +9,7 @@ use crate::{Context, Event};
 
 impl Context {
     /// This is triggered on seeing a valid proposal, and on seeing a valid decomposition proof
-    pub async fn do_vote(&mut self, p: &Proposal, dq: &mut DelayQueue<Event>)
+    pub fn do_vote(&mut self, p: &Proposal, dq: &mut DelayQueue<Event>)
     {
         // Do not vote if the proposal was received after 4\Delta of starting the epoch
         if self.propose_timeout || self.equivocation_detected {
@@ -31,7 +31,7 @@ impl Context {
         cert.msg = msg.to_vec();
         // Send responsive vote to the leader
         if self.config.id == self.last_leader {
-            self.receive_resp_vote(resp_vote, cert, dq).await;
+            self.receive_resp_vote(resp_vote, cert, dq);
             return;
         }
         self.net_send.send((self.last_leader, Arc::new(ProtocolMsg::RawResponsiveVoteMsg(resp_vote, cert)))).unwrap();
@@ -40,7 +40,7 @@ impl Context {
     }
 
     /// Do sync vote
-    pub async fn do_sync_vote(&mut self,block_hash: Hash, dq: &mut DelayQueue<Event>)
+    pub fn do_sync_vote(&mut self,block_hash: Hash, dq: &mut DelayQueue<Event>)
     {
         let sync_vote = SyncVote{
             block_hash,
@@ -56,14 +56,14 @@ impl Context {
         cert.msg = msg.to_vec();
         cert.add_vote(vote);
         if self.config.id == self.last_leader {
-            self.receive_sync_vote(sync_vote, cert, dq).await;
+            self.receive_sync_vote(sync_vote, cert, dq);
             return;
         }
         // Send sync vote to the leader
         self.net_send.send((self.last_leader, Arc::new(ProtocolMsg::RawSyncVoteMsg(sync_vote, cert)))).unwrap();
     }
 
-    pub async fn receive_resp_vote(&mut self, resp_vote: ResponsiveVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
+    pub fn receive_resp_vote(&mut self, resp_vote: ResponsiveVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
         // Check if the vote is valid
         let hash = ser_and_hash(&resp_vote).to_vec();
         log::debug!("Got a responsive vote {:?} for hash {:?} with {:?}", cert, hash, resp_vote);
@@ -93,11 +93,11 @@ impl Context {
         self.net_send.send((self.num_nodes(), 
             Arc::new(ProtocolMsg::RawResponsiveCert(msg.clone(), acc.clone()))
         )).unwrap();
-        self.do_deliver_resp_cert(acc.clone(), shards, dq).await;
-        self.receive_resp_cert_direct(msg, acc, dq).await;
+        self.do_deliver_resp_cert(acc.clone(), shards, dq);
+        self.receive_resp_cert_direct(msg, acc, dq);
     }
 
-    pub async fn receive_sync_vote(&mut self, sync_vote: SyncVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
+    pub fn receive_sync_vote(&mut self, sync_vote: SyncVote, mut cert: Certificate, dq: &mut DelayQueue<Event>) {
         log::info!("Got a sync vote");
         // Check if the vote is valid
         let hash = ser_and_hash(&sync_vote).to_vec();
@@ -122,6 +122,6 @@ impl Context {
         self.net_send.send((self.num_nodes(), 
             Arc::new(ProtocolMsg::RawSyncCert(msg, acc.clone()))
         )).unwrap();
-        self.do_deliver_sync_cert(acc, shards, dq).await;
+        self.do_deliver_sync_cert(acc, shards, dq);
     }
 }

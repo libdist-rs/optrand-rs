@@ -1,6 +1,6 @@
 use crypto::{DecompositionProof, hash::ser_and_hash};
 use tokio_util::time::DelayQueue;
-use types::{Block, DataWithAcc, Proposal, ProtocolMsg, Replica, SignedShard};
+use types::{Block, DataWithAcc, Proposal, Epoch, ProtocolMsg, Replica, SignedShard};
 use crate::{Context, Event, accumulator::{check_valid, get_acc_with_shard, get_sign, get_tree, to_shards}, get_acc};
 use std::sync::Arc;
 use util::io::to_bytes;
@@ -9,7 +9,7 @@ use types_upstream::WireReady;
 impl Context {
     /// do_propose is called when the node is ready to propose
     /// This will extend the highest known certificate of the node and create a block extending the highest known certificate
-    pub(crate) async fn do_propose(&mut self, dq: &mut DelayQueue<Event>) {
+    pub(crate) fn do_propose(&mut self, dq: &mut DelayQueue<Event>) {
         let mut queue = self.config.beacon_sharing_buffer
             .remove(&self.config.id).unwrap();
         let pvec_hash = queue.pop_front().unwrap();
@@ -38,16 +38,17 @@ impl Context {
             }
             self.net_send.send((
                 i, // Because multicast
-                Arc::new(ProtocolMsg::RawPropose(p.clone(), z_pa.clone(), decomps[i].clone()))
+                Arc::new(ProtocolMsg::RawPropose(self.epoch, p.clone(), z_pa.clone(), decomps[i].clone()))
             )).unwrap();
         }
         // The leader will just do the deliver propose part as it has generated things correctly
-        self.do_deliver_propose(&z_pa, shards).await;
-        self.propose_received_directly = true;
-        self.propose_received = Some(Arc::new(p.clone()));
-        self.do_vote(&p, dq).await;
         self.storage.add_new_block(p.new_block.clone());
         self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
+        self.do_deliver_propose(&z_pa, shards);
+        self.propose_received_directly = true;
+        self.propose_received = Some(Arc::new(p.clone()));
+        self.do_vote(&p, dq);
+        log::info!("Adding new block; {:?} for {}", p.new_block.height, p.epoch);
         if self.epoch_block_lock.is_none() {
             self.epoch_block_lock = Some(Arc::new(p.new_block));
         }
@@ -57,14 +58,14 @@ impl Context {
     /// A function called by all the nodes to deliver a propose message
     /// This function will assume that the proposal has been checked before-hand and that the root is signed
     /// Call as soon as a valid block is received/reconstructed
-    pub(crate) async fn do_deliver_propose(&mut self, acc: &DataWithAcc, shards: Vec<Vec<u8>>) 
+    pub(crate) fn do_deliver_propose(&mut self, acc: &DataWithAcc, shards: Vec<Vec<u8>>) 
     {
         let myid = self.config.id;
         let my_shard_auth = get_sign(acc, myid);
         // Sending my shard; Execute once every epoch
         if !self.propose_shard_self_sent {
             self.deliver_propose_self(shards[myid].clone(), 
-                my_shard_auth.clone()).await;
+                my_shard_auth.clone());
         }
         if self.propose_shard_others_sent {
             return;
@@ -78,6 +79,7 @@ impl Context {
             self.net_send.send(
                 (i,
                     Arc::new(ProtocolMsg::DeliverPropose(
+                        self.epoch,
                         shards[i].clone(),
                         your_shard_auth,
                         i
@@ -89,8 +91,12 @@ impl Context {
     }
 
     /// Receive proposal is called when a new proposal is received
-    pub async fn receive_proposal_direct(&mut self, sender:Replica, p: Proposal, cert: DataWithAcc, decomp: DecompositionProof, dq: &mut DelayQueue<Event>) {
-        log::info!("Got a new proposal directly");
+    pub fn receive_proposal_direct(&mut self, e:Epoch, sender:Replica, p: Proposal, cert: DataWithAcc, decomp: DecompositionProof, dq: &mut DelayQueue<Event>) {
+        log::info!("Got a new proposal for {} directly", e);
+        if e != self.epoch {
+            log::warn!("Invalid epoch {} for proposal {}",e,self.epoch);
+            return;
+        }
         // Check if we have this sharing already
         let pvec_hash = crypto::hash::ser_and_hash(&p.new_block.aggregate_pvss);
         // If we don't have it, verify and add it
@@ -117,19 +123,24 @@ impl Context {
         }
         self.propose_received_directly = true;
         self.propose_received = Some(Arc::new(p.clone()));
+        self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
+        log::info!("Adding new block; {} for {}", p.new_block.height, p.epoch);
+    
+        self.storage.add_new_block(p.new_block.clone());
         // Send shards to others
         let shards = to_shards(to_bytes(&p), self.num_nodes());
-        self.do_deliver_propose(&cert, shards).await;
-        self.do_vote(&p, dq).await;
-        self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
-        self.storage.add_new_block(p.new_block.clone());
+        self.do_deliver_propose(&cert, shards);
+        self.do_vote(&p, dq);
         if self.epoch_block_lock.is_none() {
             self.epoch_block_lock = Some(Arc::new(p.new_block));
         }
     }
 
-    pub async fn do_receive_propose_deliver(&mut self, shard: Vec<u8>, auth: SignedShard, origin: Replica) {
+    pub fn do_receive_propose_deliver(&mut self, e:Epoch, shard: Vec<u8>, auth: SignedShard, origin: Replica) {
         log::info!("Got a new proposal IN-directly");
+        if e != self.epoch {
+            return;
+        }
         if self.propose_received_directly {
             // Check for equivocation and then return since we already sent shares before
             return;
@@ -141,7 +152,7 @@ impl Context {
         , origin, &self.pub_key_map[&self.last_leader], auth.clone());
         // I can only send my shares for now
         if origin == self.config.id && !self.propose_shard_self_sent {
-            self.deliver_propose_self(shard, auth.clone()).await;
+            self.deliver_propose_self(shard, auth.clone());
             self.propose_shard_self_sent = true;
         }
         if self.propose_gatherer.shard_num <= (self.num_nodes()/4) + 1 {
@@ -150,12 +161,12 @@ impl Context {
         let p = self.propose_gatherer.reconstruct(self.num_nodes()).unwrap();
         let prop = Proposal::from_bytes(&p).init();
         let (shards, cert) = get_acc_with_shard(&self, &prop, auth);
-        self.do_deliver_propose(&cert, shards).await;
-        self.do_receive_proposal_indirect(prop).await;
+        self.do_deliver_propose(&cert, shards);
+        self.do_receive_proposal_indirect(prop);
     }
 
     /// What do we do when we receive a proposal indirectly?
-    pub async fn do_receive_proposal_indirect(&mut self, p: Proposal)
+    pub fn do_receive_proposal_indirect(&mut self, p: Proposal)
     {
         // Check if we have this sharing already
         let pvec_hash = crypto::hash::ser_and_hash(&p.new_block.aggregate_pvss);
@@ -171,6 +182,7 @@ impl Context {
         // We have checked and confirmed that the pvss sharing is okay
         self.propose_received = Some(Arc::new(p.clone()));
         self.storage.proposer_map.insert(p.new_block.hash, self.last_leader);
+        log::info!("Adding new block; {} for {}", p.new_block.height, p.epoch);
         self.storage.add_new_block(p.new_block.clone());
         if self.epoch_block_lock.is_none() {
             self.epoch_block_lock = Some(Arc::new(p.new_block));

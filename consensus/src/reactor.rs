@@ -16,7 +16,7 @@ pub async fn reactor(
     let delta = cx.delta();
     // A little time to boot everything up
     let mut delay_queue:DelayQueue<_> = DelayQueue::new();
-    delay_queue.insert(Event::EpochEnd, Duration::from_millis(11*delta));
+    delay_queue.insert(Event::EpochEnd(0), Duration::from_millis(11*delta));
     loop {
         tokio::select! {
             pmsg_opt = net_recv.recv() => {
@@ -25,11 +25,11 @@ pub async fn reactor(
                     break;
                 }
                 let pmsg = pmsg_opt.unwrap();
-                cx.handle_message(pmsg.0, pmsg.1, &mut delay_queue).await;
+                cx.handle_message(pmsg.0, pmsg.1, &mut delay_queue);
             }
             phase = delay_queue.next() => {
                 let phase = phase.unwrap().unwrap().into_inner();
-                cx.handle_event(phase, &mut delay_queue).await;
+                cx.handle_event(phase, &mut delay_queue);
             }
         }
     }

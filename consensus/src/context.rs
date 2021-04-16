@@ -1,6 +1,6 @@
 use super::accumulator::ShareGatherer;
 
-use crypto::{AggregatePVSS, DecompositionProof, Decryption, PVSSVec, Share, hash::Hash};
+use crypto::{AggregatePVSS, DecompositionProof, PVSSVec, Share, hash::Hash};
 use fnv::FnvHashMap as HashMap;
 
 use tokio::sync::mpsc::UnboundedSender;
@@ -118,4 +118,11 @@ pub struct Context {
     pub last_reconstruction_round: Epoch,
     /// The vector which we are supposed to reconstruct for this round
     pub current_round_reconstruction_vector: Option<Arc<AggregatePVSS>>,
+
+    /// Future messages for proposals
+    pub future_messages1: HashMap<Epoch, (Replica, ProtocolMsg)>,
+    /// Future messages for responsive certificates 
+    pub future_messages2: HashMap<Epoch, (Replica, ProtocolMsg)>,
+    /// Future messages for ack messages
+    pub future_messages3: HashMap<Epoch, Vec<(Replica,ProtocolMsg)>>,
 }

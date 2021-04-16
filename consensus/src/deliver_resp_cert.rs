@@ -1,6 +1,6 @@
 use tokio::time::Duration;
 use tokio_util::time::DelayQueue;
-use types::{AckMsg, Certificate, DataWithAcc, ProtocolMsg, Replica, ResponsiveCertMsg, SignedShard, Vote, CertType};
+use types::{AckMsg, CertType, DataWithAcc, Epoch, ProtocolMsg, Replica, ResponsiveCertMsg, SignedShard};
 use std::sync::Arc;
 use types_upstream::WireReady;
 use crypto::hash::ser_and_hash;
@@ -10,13 +10,13 @@ use util::io::to_bytes;
 
 impl Context {
     /// A function called on receiving a shard or on receiving the responsive certificate
-    pub async fn do_deliver_resp_cert(&mut self, acc: DataWithAcc, shards: Vec<Vec<u8>>, dq: &mut DelayQueue<Event>) {
+    pub fn do_deliver_resp_cert(&mut self, acc: DataWithAcc, shards: Vec<Vec<u8>>, _dq: &mut DelayQueue<Event>) {
         let myid = self.config.id;
         let my_shard_auth = get_sign(&acc, myid);
         // Sending my shard; Execute once every epoch
         if !self.resp_cert_shard_self_sent {
             self.deliver_resp_cert_self(shards[myid].clone(), 
-                my_shard_auth.clone()).await;
+                my_shard_auth.clone());
         }
         if self.resp_cert_shard_others_sent {
             return;
@@ -30,6 +30,7 @@ impl Context {
             self.net_send.send(
                 (i,
                     Arc::new(ProtocolMsg::DeliverResponsiveCert(
+                        self.epoch,
                         shards[i].clone(),
                         your_shard_auth,
                         i
@@ -41,7 +42,7 @@ impl Context {
     }
 
     /// Received responsive certificate directly
-    pub async fn receive_resp_cert_direct(&mut self, rcert: ResponsiveCertMsg, cert: DataWithAcc, dq: &mut DelayQueue<Event>) {
+    pub fn receive_resp_cert_direct(&mut self, rcert: ResponsiveCertMsg, cert: DataWithAcc, dq: &mut DelayQueue<Event>) {
         // Initiate the synchronous path if this is the first certificate
         if self.resp_cert_received.is_some() {
             // Check equivocation
@@ -82,21 +83,21 @@ impl Context {
             self.highest_cert = CertType::Resp(rcert.clone());
         }
         let shards = to_shards(to_bytes(&rcert), self.num_nodes());
-        self.do_deliver_resp_cert(cert, shards, dq).await;
+        self.do_deliver_resp_cert(cert, shards, dq);
         let ack = AckMsg{
             block_hash: rcert.resp_vote.block_hash,
-            epoch: self.epoch,
+            epoch: rcert.resp_vote.epoch,
         };
-        self.do_ack(ack, dq).await;
+        self.do_ack(ack, dq);
         // We obtained a beacon for this, go to the next round
-        if self.last_reconstruction_round == self.epoch {
-            // To break recursion, we use the delay queue
-            dq.insert(Event::EpochEnd, Duration::from_millis(0));
-        }
+        // if self.last_reconstruction_round == self.epoch {
+        //     // To break recursion, we use the delay queue
+        //     dq.insert(Event::EpochEnd(rcert.resp_vote.epoch), Duration::from_nanos(1));
+        // }
     }
 
     /// Received a responsive certificate indirectly
-    pub async fn do_receive_resp_cert_indirect(&mut self, rcert: ResponsiveCertMsg, dq: &mut DelayQueue<Event>) {
+    pub fn do_receive_resp_cert_indirect(&mut self, rcert: ResponsiveCertMsg, dq: &mut DelayQueue<Event>) {
         if self.epoch != rcert.resp_vote.epoch {
             // Stale message
             log::warn!("Stale resp certificate received");
@@ -124,32 +125,35 @@ impl Context {
         }
         let ack = AckMsg{
             block_hash: rcert.resp_vote.block_hash,
-            epoch: self.epoch,
+            epoch: rcert.resp_vote.epoch,
         };
-        self.do_ack(ack, dq).await;
+        self.do_ack(ack, dq);
         // We obtained a beacon for this, go to the next round
         if self.last_reconstruction_round == self.epoch {
             // To break recursion, we use the delay queue
-            dq.insert(Event::EpochEnd, Duration::from_millis(0));
+            dq.insert(Event::EpochEnd(rcert.resp_vote.epoch), Duration::from_nanos(1));
         }
     }
 
     /// Received a deliver message for a responsive certificate
-    pub async fn do_receive_resp_cert_deliver(&mut self, shard: Vec<u8>, auth: SignedShard, origin: Replica, dq: &mut DelayQueue<Event>) {
+    pub fn do_receive_resp_cert_deliver(&mut self, e:Epoch,shard: Vec<u8>, auth: SignedShard, origin: Replica, dq: &mut DelayQueue<Event>) {
+        if e != self.epoch {
+            return;
+        }
         if self.resp_cert_received.is_some() {
             return;
         }
         if self.resp_cert_received_directly {
             // Check for equivocation and then return since we already sent shares before
             let (shards, cert) = get_acc_with_shard(&self, &self.resp_cert_received.as_ref().unwrap().as_ref(), auth);
-            self.do_deliver_resp_cert(cert, shards, dq).await;
+            self.do_deliver_resp_cert(cert, shards, dq);
             return;
         }
         self.resp_cert_gatherer.add_share(shard.clone()
         , origin, &self.pub_key_map[&self.last_leader], auth.clone());
         // I can only send my shares for now
         if origin == self.config.id && !self.resp_cert_shard_self_sent {
-            self.deliver_resp_cert_self(shard, auth.clone()).await;
+            self.deliver_resp_cert_self(shard, auth.clone());
             self.resp_cert_shard_self_sent = true;
         }
         if self.resp_cert_gatherer.shard_num < (self.num_nodes()/4) + 1 {
@@ -158,8 +162,8 @@ impl Context {
         let p = self.resp_cert_gatherer.reconstruct(self.num_nodes()).unwrap();
         let rcert = ResponsiveCertMsg::from_bytes(&p).init();
         let (shards, cert) = get_acc_with_shard(&self, &rcert, auth);
-        self.do_deliver_resp_cert(cert, shards, dq).await;
-        self.do_receive_resp_cert_indirect(rcert.clone(), dq).await;
+        self.do_deliver_resp_cert(cert, shards, dq);
+        self.do_receive_resp_cert_indirect(rcert.clone(), dq);
         self.resp_cert_received = Some(Arc::new(rcert));
     }
 }

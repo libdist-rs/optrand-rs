@@ -5,7 +5,7 @@ use crate::Context;
 
 impl Context {
     /// Handle status messages from other nodes
-    pub async fn do_receive_status(&mut self, ht: Height, cert: CertType) {
+    pub fn do_receive_status(&mut self, ht: Height, cert: CertType) {
         if self.highest_block.height >= ht {
             // We already have the highest certificate certificate
             return;

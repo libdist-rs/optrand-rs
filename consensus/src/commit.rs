@@ -1,41 +1,48 @@
 use std::time::Duration;
 
-use crypto::hash::ser_and_hash;
+use crypto::hash::{ser_and_hash, Hash};
 use tokio_util::time::DelayQueue;
-use types::{Block, Epoch};
+use types::{Block, Height};
 use std::sync::Arc;
 
 use crate::{context::Context, events::Event};
 
 impl Context {
-    pub async fn do_responsive_commit(&mut self, dq: &mut DelayQueue<Event>) {
-        log::info!("Responsively committing a block");
+    pub fn do_responsive_commit(&mut self,bhash: Hash, dq: &mut DelayQueue<Event>) {
         if self.responsive_timeout {
             return;
         }
         if self.equivocation_detected {
             return;
         }
+        log::info!("Responsively committing a block");
         // Commit block and all its ancestors
-        self.commit_all();
+        let b = self.storage.all_delivered_blocks_by_hash[&bhash].clone();
+        self.commit_from_block(b);
         // Start reconstruction
-        self.do_reconstruction(self.epoch, dq).await;
+        self.do_reconstruction(self.epoch, dq);
     }
 
     /// Tries to start the sync commit timers
     /// Make sure this is executed only once
-    pub async fn start_sync_commit(&mut self, e: Epoch, dq: &mut DelayQueue<Event>) {
+    pub fn start_sync_commit(&mut self, ht: Height, dq: &mut DelayQueue<Event>) {
+        if self.highest_committed_block.height >= ht {
+            return;
+        }
         if self.sync_commit_timeout {
             return;
         }
         if self.started_sync_timer {
             return;
         }
-        dq.insert(Event::SyncTimer(e), Duration::from_millis(self.delta()*2));
+        dq.insert(Event::SyncTimer(ht), Duration::from_millis(self.delta()*2));
         self.started_sync_timer = true;
     }
 
-    pub async fn try_sync_commit(&mut self, dq: &mut DelayQueue<Event>) {
+    pub fn try_sync_commit(&mut self, ht: Height, _dq: &mut DelayQueue<Event>) {
+        if self.highest_committed_block.height >= ht {
+            return;
+        }
         if self.sync_commit_timeout {
             return;
         }
@@ -43,17 +50,17 @@ impl Context {
             return;
         }
         // Check if we already committed for this epoch
-        self.commit_all();
+        self.commit_all(ht);
         log::info!("Check if called only once");
     }
 
     /// Commit current epoch and all its ancestors
-    fn commit_all(&mut self) {
-        if self.highest_committed_block.height > self.epoch {
+    fn commit_all(&mut self, ht:Height) {
+        if self.highest_committed_block.height >= ht {
             return;
         }
-        let b = self.epoch_block_lock.take()
-        .expect("Unexpected, since we must have locked a block before starting the sync timer");
+        log::info!("Committing height {}", ht);
+        let b = self.storage.all_delivered_blocks_by_ht[&ht].clone();
         self.highest_committed_block = b.clone();
         self.commit_from_block(b)
     }
@@ -75,6 +82,7 @@ impl Context {
     /// Commit_pvss will add the pvss vector to the internal queues
     fn commit_pvss(&mut self, b: &Arc<Block>) {
         let proposer = self.storage.proposer_map[&b.hash];
+        log::info!("Committing proposer {} PVSS block", proposer);
         let hash = ser_and_hash(&b.aggregate_pvss);
         self.config.sharings.insert(hash, b.aggregate_pvss.clone());
         let mut queue = self.config.rand_beacon_queue.remove(&proposer).unwrap();

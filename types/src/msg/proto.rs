@@ -11,9 +11,9 @@ pub enum ProtocolMsg {
     BeaconReady(Epoch, Beacon),
 
     /// Used internally for networking
-    RawStatus(Height, CertType),
+    RawStatus(Epoch, Height, CertType),
     /// Status message contains a certificate > 1 signatures
-    Status(Height, CertType),
+    Status(Epoch, Height, CertType),
 
     /// RawEpochPVSSSharing used internally on the wire
     RawEpochPVSSSharing(PVSSVec),
@@ -22,18 +22,18 @@ pub enum ProtocolMsg {
     /// dleq.len() = pvssvec.enc.len() = pvssvec.comms.len() = pvssvec.proofs.len()
     EpochPVSSSharing(PVSSVec),
 
-    RawPVSSSharingReady(Epoch, AggregatePVSS, DecompositionProof),
-    PVSSSharingReady(Epoch, AggregatePVSS, DecompositionProof),
+    RawPVSSSharingReady(Replica, AggregatePVSS, DecompositionProof),
+    PVSSSharingReady(Replica, AggregatePVSS, DecompositionProof),
 
     /// Network-level propose message
-    RawPropose(Proposal, DataWithAcc, DecompositionProof),
+    RawPropose(Epoch, Proposal, DataWithAcc, DecompositionProof),
     /// Semantically valid propose message
     /// 1. The block's hash is pre-populated
     /// 2. The hash in the certificate is of the parent block mentioned in the new block
     /// 3. The signature contains only 1 vote on the hash of the block
-    Propose(Proposal, DataWithAcc, DecompositionProof),
+    Propose(Epoch, Proposal, DataWithAcc, DecompositionProof),
     /// Deliver Propose contains my shard and your shard instead of sending messages twice
-    DeliverPropose(Vec<u8>, SignedShard, Replica),
+    DeliverPropose(Epoch, Vec<u8>, SignedShard, Replica),
 
     /// Network-level propose message
     RawResponsiveVoteMsg(ResponsiveVote, Certificate),
@@ -46,14 +46,14 @@ pub enum ProtocolMsg {
     /// Semantically valid responsive certificate
     ResponsiveCert(ResponsiveCertMsg, DataWithAcc),
     /// Deliver responsive certificate delivers (my shard, your shard) for the responsive certificate
-    DeliverResponsiveCert(Vec<u8>, SignedShard, Replica),
+    DeliverResponsiveCert(Epoch, Vec<u8>, SignedShard, Replica),
 
     /// Network level sync certificate
     RawSyncCert(SyncCertMsg, DataWithAcc),
     /// Semantically valid sync certificate
     SyncCert(SyncCertMsg, DataWithAcc),
     /// Deliver responsive certificate delivers (my shard, your shard) for the responsive certificate
-    DeliverSyncCert(Vec<u8>, SignedShard, Replica),
+    DeliverSyncCert(Epoch, Vec<u8>, SignedShard, Replica),
 
     /// Network level Sync Vote
     /// contains (Epoch, Certificate)
@@ -65,7 +65,7 @@ pub enum ProtocolMsg {
     RawAck(AckMsg, Certificate),
     /// Semantically valid ack message guarantees that there is only vote in the certificate
     Ack(AckMsg, Certificate),
-    DeliverAckCert(Vec<u8>, Vec<u8>),
+    DeliverAckCert(Epoch, Vec<u8>, Vec<u8>),
 
     /// Network level Beacon Share
     /// Contains the epoch for the share and the decryption itself
@@ -95,8 +95,8 @@ impl WireReady for ProtocolMsg {
     fn init(self) -> Self {
         // log::info!("Transforming {:?}", self);
         match self {
-            ProtocolMsg::RawStatus(x, c) => {
-                ProtocolMsg::Status(x,c)
+            ProtocolMsg::RawStatus(ep, x, c) => {
+                ProtocolMsg::Status(ep, x,c)
             },
             ProtocolMsg::RawEpochPVSSSharing( y) => {
                 if y.encs.len() != y.comms.len() {
@@ -121,14 +121,14 @@ impl WireReady for ProtocolMsg {
             }
             ProtocolMsg::RawBeaconReady(x,y) => 
                 ProtocolMsg::BeaconReady(x,y),
-            ProtocolMsg::RawPropose(p,z_pa, decomp) => {
+            ProtocolMsg::RawPropose(e,p,z_pa, decomp) => {
                 let p = p.init();
                 log::info!("Got a propose message");
                 if p.new_block.aggregate_pvss.encs.len() != p.new_block.aggregate_pvss.comms.len() {
                     log::warn!("Rejecting propose beacuse pvss encs len != pvss comms len");
                     return ProtocolMsg::InvalidMessage;
                 }
-                ProtocolMsg::Propose(p,z_pa, decomp)
+                ProtocolMsg::Propose(e, p,z_pa, decomp)
             }
             ProtocolMsg::RawResponsiveVoteMsg(resp_vote, vote) => {
                 log::info!("Got vote message");
@@ -180,3 +180,4 @@ impl WireReady for ProtocolMsg {
         ProtocolMsg::from_bytes(data)
     }
 }
+

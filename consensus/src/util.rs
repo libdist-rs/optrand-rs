@@ -28,6 +28,9 @@ impl Context {
             highest_block: genesis_block.clone(),
             last_leader_epoch: 0,
 
+            future_messages1: HashMap::default(),
+            future_messages2: HashMap::default(),
+            future_messages3: HashMap::default(),
             propose_shard_self_sent: false,
             resp_cert_shard_self_sent: false,
             sync_cert_shard_self_sent: false,

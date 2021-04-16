@@ -15,6 +15,7 @@ mod commit;
 mod util;
 mod reconstruction;
 mod status;
+mod futurify;
 
 mod test;
 

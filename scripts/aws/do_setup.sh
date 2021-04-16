@@ -27,6 +27,6 @@ wait
 
 for ip in "${IPS[@]}"
 do
-  ssh arch@$ip "cd randpiper-rs; cat > ips_file" < $IPS_FILE
-  ssh arch@$ip "cd randpiper-rs; cat > cli_ip_file" < $CLI_IPS_FILE
+  ssh arch@$ip "cd optrand-rs; cat > ips_file" < $IPS_FILE
+  ssh arch@$ip "cd optrand-rs; cat > cli_ip_file" < $CLI_IPS_FILE
 done
