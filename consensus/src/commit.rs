@@ -15,9 +15,9 @@ impl Context {
         if self.equivocation_detected {
             return;
         }
-        log::debug!("Responsively committing a block");
         // Commit block and all its ancestors
         let b = self.storage.all_delivered_blocks_by_hash[&bhash].clone();
+        log::debug!("Responsively committing height {} a block", b.height);
         self.commit_from_block(b);
         // Start reconstruction
         self.do_reconstruction(self.epoch, dq);
