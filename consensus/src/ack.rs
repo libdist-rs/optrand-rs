@@ -8,7 +8,7 @@ impl Context {
     /// do ack; Send ack to all the nodes
     pub fn do_ack(&mut self, ack: AckMsg, dq:&mut DelayQueue<Event>) {
         if ack.epoch != self.epoch {
-            log::warn!("Stale ack received");
+            log::debug!("Stale ack received");
             return;
         }
         let mut cert = Certificate::empty_cert();

@@ -99,7 +99,7 @@ impl Context {
     pub fn futurify(&mut self, sender: Replica, m: ProtocolMsg) -> Option<ProtocolMsg> {
         let e = m.get_epoch();
         if self.epoch < e {
-            log::warn!("Got a future msg {:?}", m);
+            log::debug!("Got a future msg {:?}", m);
             self.add_future_messages((sender, m));
             return None;
         }
