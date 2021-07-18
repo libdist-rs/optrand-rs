@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use crate::{AckMsg, CertType, Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveCertMsg, ResponsiveVote, SignedShard, SyncCertMsg, SyncVote};
-use types_upstream::{WireReady};
-use crypto::{AggregatePVSS, Beacon, DecompositionProof, Decryption, PVSSVec, hash::ser_and_hash};
+use crate::{AckMsg, CertType, Certificate, DataWithAcc, Epoch, Height, Proposal, Replica, ResponsiveCertMsg, ResponsiveVote, SignedShard, SyncCertMsg, SyncVote, Beacon, AggregatePVSS, DecompositionProof, Decryption, PVSSVec};
+use types_upstream::WireReady;
+use crypto::{hash::ser_and_hash};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ProtocolMsg {
@@ -15,7 +15,7 @@ pub enum ProtocolMsg {
     /// Status message contains a certificate > 1 signatures
     Status(Epoch, Height, CertType),
 
-    /// RawEpochPVSSSharing used internally on the wire
+   /// RawEpochPVSSSharing used internally on the wire
     RawEpochPVSSSharing(PVSSVec),
     /// EpochPVSSSharing is sent by nodes to the leader to prepare for the next round
     /// A valid EpochPVSSSharing message guarantees that 
@@ -178,6 +178,10 @@ impl WireReady for ProtocolMsg {
 
     fn from_bytes(data: &[u8]) -> Self {
         ProtocolMsg::from_bytes(data)
+    }
+
+    fn to_bytes(self: &Self) -> Vec<u8> {
+        bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
     }
 }
 

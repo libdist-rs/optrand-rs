@@ -1,21 +1,22 @@
 use rand::Rng;
-use ark_ec::{ProjectiveCurve,AffineCurve};
+use ark_ec::{AffineCurve, PairingEngine};
 use ark_std::UniformRand;
 
-use crate::{G1,Scalar};
+use crate::{Scalar, PublicKey, SecretKey};
 
-pub type SecretKey = Scalar;
-pub type PublicKey = G1;
 
-pub struct Keypair (pub SecretKey, pub PublicKey);
+pub struct Keypair<E: PairingEngine> (pub SecretKey<E>, 
+    pub PublicKey<E>);
 
-impl Keypair {
-    pub fn generate_keypair<R>(rng: &mut R) -> Keypair
+impl<E> Keypair<E> 
+where E: PairingEngine,
+{
+    pub fn generate_keypair<R>(rng: &mut R) -> Self
     where R: Rng + ?Sized,
     {
-        let secret = Scalar::rand(rng);
-        Keypair(secret,
-            G1::prime_subgroup_generator().mul(secret).into_affine(),
+        let secret = Scalar::<E>::rand(rng);
+        Self(secret,
+            E::G1Affine::prime_subgroup_generator().mul(secret),
         )
     }
 }

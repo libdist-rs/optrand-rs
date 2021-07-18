@@ -6,7 +6,7 @@ impl Node {
     pub fn from_json(filename: String) -> Node {
         let f = File::open(filename).unwrap();
         let c: Node = serde_json::from_reader(f).unwrap();
-        return c.init();
+        c.init()
     }
 
     pub fn from_toml(filename: String) -> Node {

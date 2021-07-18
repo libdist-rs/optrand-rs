@@ -76,6 +76,10 @@ impl WireReady for ResponsiveCertMsg {
         let c:ResponsiveCertMsg = bincode::deserialize(&data).expect("failed to decode the responsive certificate");
         c
     }
+
+    fn to_bytes(self: &Self) -> Vec<u8> {
+        bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
+    }
 }
 
 impl WireReady for SyncCertMsg {
@@ -86,5 +90,9 @@ impl WireReady for SyncCertMsg {
     fn from_bytes(data: &[u8]) -> Self {
         let c:SyncCertMsg = bincode::deserialize(&data).expect("failed to decode the responsive certificate");
         c
+    }
+
+    fn to_bytes(self: &Self) -> Vec<u8> {
+        bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
     }
 }

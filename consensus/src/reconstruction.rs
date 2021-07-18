@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crypto::{Beacon, Decryption};
+use types::{Beacon, Decryption};
 use tokio_util::time::DelayQueue;
 use types::{Epoch, ProtocolMsg, Replica};
 use crate::{context::Context, events::Event};

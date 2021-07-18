@@ -1,4 +1,4 @@
-use crypto::{AggregatePVSS, DecompositionProof, PVSSVec};
+use types::{AggregatePVSS, DecompositionProof, PVSSVec};
 use types::{ProtocolMsg, Replica};
 use std::sync::Arc;
 

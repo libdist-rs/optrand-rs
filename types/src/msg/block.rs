@@ -1,28 +1,7 @@
-use crypto::{AggregatePVSS, hash::{Hash, EMPTY_HASH}};
+use crypto::{hash::{Hash, EMPTY_HASH}};
 use serde::{Deserialize, Serialize};
-use crate::{Height, Replica};
+use crate::{Height, AggregatePVSS};
 use types_upstream::WireReady;
-
-// #[derive(Serialize, Deserialize, Clone)]
-// pub struct Content {
-//     pub commits: Vec<crypto::EVSSCommit381>,
-//     pub acks: Vec<Vote>,
-// }
-
-// impl Content {
-//     pub const fn new() -> Self {
-//         Content {
-//             commits: Vec::new(),
-//             acks: Vec::new(),
-//         }
-
-//     }
-
-//     pub fn from_bytes(bytes: &[u8]) -> Self {
-//         let c: Content = bincode::deserialize(&bytes).expect("failed to decode the content");
-//         return c;
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
@@ -78,5 +57,9 @@ impl types_upstream::WireReady for Block {
 
     fn from_bytes(data: &[u8]) -> Self {
         Block::from_bytes(data)
+    }
+
+    fn to_bytes(self: &Self) -> Vec<u8> {
+        bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
     }
 }

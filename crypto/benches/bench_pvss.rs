@@ -1,3 +1,5 @@
+use ark_bls12_381::Bls12_381;
+use ark_ec::PairingEngine;
 use fnv::FnvHashMap as HashMap;
 
 use criterion::{
@@ -9,6 +11,8 @@ use rand::{rngs::StdRng, SeedableRng};
 const SEED: u64 = 42;
 static TEST_POINTS: [usize; 7] = [3, 10, 20, 30, 50, 75, 100];
 const BENCH_COUNT: usize = 10;
+type E = Bls12_381;
+type G2 = <E as PairingEngine>::G2Affine;
 
 pub fn pvss_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("pvss_generation");
@@ -19,21 +23,21 @@ pub fn pvss_generation(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
+        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = Vec::new();
         for _i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.push(dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
-        let dbs_ctx = DbsContext::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
+        let dbs_ctx = DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -56,21 +60,21 @@ pub fn pvss_verification(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
+        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = Vec::new();
         for _i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.push(dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
-        let dbs_ctx = DbsContext::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
+        let dbs_ctx = DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
         let idx = 0;
         let pvec = 
             dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
@@ -96,22 +100,22 @@ pub fn pvss_aggregation(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
+        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = Vec::new();
         for _i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.push(dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
@@ -143,22 +147,22 @@ pub fn pvss_pverify(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
+        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = Vec::new();
         for _i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.push(dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
@@ -191,22 +195,22 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<_> = Vec::new();
+        let mut secret_keys: Vec<_> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = HashMap::default();
         for i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.insert(i, dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
@@ -239,22 +243,22 @@ pub fn pvss_decryption(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<_> = Vec::new();
+        let mut secret_keys: Vec<_> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = HashMap::default();
         for i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.insert(i as u16, dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..t+1).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
@@ -287,22 +291,22 @@ pub fn pvss_verify_decryption(c: &mut Criterion) {
         let mut rng = &mut StdRng::seed_from_u64(SEED);
         let t = (n - 1) / 2;
         
-        let mut public_keys = Vec::new();
-        let mut secret_keys = Vec::new();
+        let mut public_keys: Vec<_> = Vec::new();
+        let mut secret_keys: Vec<_> = Vec::new();
         let mut dss_kpair = Vec::new();
         let mut dss_pk = HashMap::default();
         for i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.insert(i as u16, dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {
@@ -347,17 +351,17 @@ pub fn pvss_reconstruction(c: &mut Criterion) {
         let mut dss_kpair = Vec::new();
         let mut dss_pk = HashMap::default();
         for i in 0..n {
-            let kpair = Keypair::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
             let dsskpair = crypto_lib::Keypair::generate_ed25519();
             dss_pk.insert(i as u16, dsskpair.public());
             dss_kpair.push(dsskpair);
         }
-        let h2 = G2::prime_subgroup_generator().mul(Scalar::rand(&mut rng));
+        let h2 = G2::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx:Vec<_> = (0..n).map(|i| {
-            DbsContext::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
+            DbsContext::<E>::new(&mut rng, h2,n, t, i, public_keys.clone(), secret_keys[i].clone())
         }).collect();
         let mut pvecs = Vec::with_capacity(t+1); 
         for i in 0..t+1 {

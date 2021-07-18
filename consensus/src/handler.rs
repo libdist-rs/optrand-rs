@@ -57,7 +57,7 @@ impl Context {
                 self.on_recv_ack(msg, vote, dq);
             }
             // I got a status message
-            ProtocolMsg::Status(e, ht, cert) => {
+            ProtocolMsg::Status(_e, ht, cert) => {
                 self.do_receive_status(ht, cert);
             }
             // I got a beacon share

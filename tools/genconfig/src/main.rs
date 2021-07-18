@@ -6,7 +6,7 @@ use clap::{load_yaml, App};
 use config::Node;
 // use crypto::rand::{rngs::StdRng, SeedableRng};
 use crypto_lib::{ed25519, Algorithm};
-use types::Replica;
+use types::{DbsContext, Keypair, Replica};
 use fnv::FnvHashMap as HashMap;
 use std::error::Error;
 
@@ -60,17 +60,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut pvss_sk_map = Vec::new();
 
     let mut rng = crypto::std_rng();
-    let h2 = crypto::rand_g2_generator(&mut rng);
+    let h2 = crypto::rand_h2_generator::<_,crypto::E>(&mut rng);
 
     for _i in 0..num_nodes {
-        let pvss_keypair = crypto::Keypair::generate_keypair(&mut rng);
+        let pvss_keypair = Keypair::generate_keypair(&mut rng);
         pvss_sk_map.push(pvss_keypair.0);
         pvss_pk_map.push(pvss_keypair.1);
     }
 
     let mut pvss_ctx_map:HashMap<_,_> = HashMap::default();
     for i in 0..num_nodes {
-        let ctx = crypto::DbsContext::new(&mut rng, 
+        let ctx = DbsContext::new(&mut rng, 
             h2, 
             num_nodes, 
             num_faults, 
@@ -126,29 +126,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     // I mean, come on! If you trust this file to generate keys for your protocol, you can trust this file to generate the seed properly too :)
     let indices = [1, 2]; // We will throw this away anyways
     for i in 0..num_nodes {
-        let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-        let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-        let pvec = [sh1, sh2];
-        let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
-        // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
-        let h = crypto::hash::ser_and_hash(&combined_pvss);
-        for j in 0..num_nodes {
-            let mut queue = VecDeque::new();
-            queue.push_front(h);
-            node[j].rand_beacon_queue.insert(i, queue);
-            node[j].sharings.insert(h, combined_pvss.clone());
-        }
-        let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-        let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-        let pvec = [sh1, sh2];
-        let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
-        // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
-        let h = crypto::hash::ser_and_hash(&combined_pvss);
-        for j in 0..num_nodes {
-            let mut queue = VecDeque::new();
-            queue.push_front(h);
-            node[j].rand_beacon_queue.insert(i, queue);
-            node[j].sharings.insert(h, combined_pvss.clone());
+        for _k in 0..20 {
+            let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
+            let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
+            let pvec = [sh1, sh2];
+            let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
+            // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
+            let h = crypto::hash::ser_and_hash(&combined_pvss);
+            for j in 0..num_nodes {
+                let mut queue = VecDeque::new();
+                queue.push_front(h);
+                node[j].rand_beacon_queue.insert(i, queue);
+                node[j].sharings.insert(h, combined_pvss.clone());
+            }
         }
 
         let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);

@@ -1,5 +1,5 @@
 use super::Block;
-use crate::{CertType, Certificate, Epoch};
+use crate::{CertType, Epoch};
 use types_upstream::WireReady;
 use serde::{Deserialize, Serialize};
 
@@ -28,5 +28,9 @@ impl WireReady for Proposal {
 
     fn from_bytes(data: &[u8]) -> Self {
         Proposal::from_bytes(data)
+    }
+
+    fn to_bytes(self: &Self) -> Vec<u8> {
+        bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
     }
 }

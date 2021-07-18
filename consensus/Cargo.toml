@@ -19,7 +19,7 @@ bytes = "1.0"
 tokio-util = "0.6"
 tokio-stream = "0.1"
 log = "*"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.126", features = ["derive"] }
 num-traits = "0.2"
 fnv = "1"
 

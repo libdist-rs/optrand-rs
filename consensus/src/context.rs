@@ -1,6 +1,7 @@
 use super::accumulator::ShareGatherer;
 
-use crypto::{AggregatePVSS, DecompositionProof, PVSSVec, Share, hash::Hash};
+use types::{AggregatePVSS, DecompositionProof, PVSSVec, Share};
+use crypto::{hash::Hash};
 use fnv::FnvHashMap as HashMap;
 
 use tokio::{sync::mpsc::UnboundedSender, time::Instant};

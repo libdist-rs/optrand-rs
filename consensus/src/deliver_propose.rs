@@ -1,6 +1,6 @@
-use crypto::{DecompositionProof, hash::ser_and_hash};
+use crypto::{hash::ser_and_hash};
 use tokio_util::time::DelayQueue;
-use types::{Block, DataWithAcc, Proposal, Epoch, ProtocolMsg, Replica, SignedShard};
+use types::{Block, DataWithAcc, Proposal, Epoch, ProtocolMsg, Replica, SignedShard, DecompositionProof};
 use crate::{Context, Event, accumulator::{check_valid, get_acc_with_shard, get_sign, get_tree, to_shards}, get_acc};
 use std::sync::Arc;
 use util::io::to_bytes;

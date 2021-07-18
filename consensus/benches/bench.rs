@@ -8,7 +8,7 @@ use types::{DataWithAcc, Replica, SignedShard, Certificate};
 use util::io::to_bytes;
 use consensus::{to_shards, get_size};
 
-const SEED: u64 = 42;
+const _SEED: u64 = 42;
 static TEST_POINTS: [usize; 7] = [3, 10, 20, 30, 50, 75, 100];
 const BENCH_COUNT: usize = 10;
 

@@ -1,10 +1,10 @@
 use std::collections::VecDeque;
 
 use super::{is_valid_replica, ParseError};
-use crypto::{AggregatePVSS, DbsContext, hash::Hash};
+use crypto::{hash::Hash};
 use serde::{Deserialize, Serialize};
 use fnv::FnvHashMap as HashMap;
-use types::Replica;
+use types::{Replica, AggregatePVSS, DbsContext};
 use crypto_lib::Algorithm;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -86,7 +86,7 @@ impl Node {
         self.my_ip_addr = self.net_map.get(&self.id)
             .expect("Attempted to init a config without assigning an IP to self")
             .clone();
-        self.pvss_ctx = self.pvss_ctx.init(&mut crypto::std_rng());
+        self.pvss_ctx.init(&mut crypto::std_rng());
         self
     }
 

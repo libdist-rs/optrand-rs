@@ -1,4 +1,5 @@
 mod ark_serde;
+use ark_bls12_381::Bls12_381;
 pub use ark_serde::*;
 
 pub mod hash;
@@ -20,33 +21,52 @@ pub use keypairs::*;
 mod errors;
 pub use errors::*;
 
-use ark_bls12_381::Bls12_381;
 use ark_ec::PairingEngine;
 use ark_poly::univariate::DensePolynomial;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-pub type Scalar = <Bls12_381 as PairingEngine>::Fr;
-pub type Polynomial = DensePolynomial<Scalar>;
-pub type G1 = <Bls12_381 as PairingEngine>::G1Affine;
-pub type G2 = <Bls12_381 as PairingEngine>::G2Affine;
-pub type G1P = <Bls12_381 as PairingEngine>::G1Projective;
-pub type G2P = <Bls12_381 as PairingEngine>::G2Projective;
-pub type GT = <Bls12_381 as PairingEngine>::Fqk;
+/// The scalar field of the pairing groups
+pub type Scalar<E> = <E as PairingEngine>::Fr;
 
-pub type Secret = GT;
-pub type Share = G1;
-pub type Commitment = G2;
+/// A polynomial with the various coefficients in the Scalar Group
+pub type Polynomial<E> = DensePolynomial<Scalar<E>>;
+
+/// The target group GT of the pairing
+pub type GT<E> = <E as PairingEngine>::Fqk;
+
+/// The secret that we will be encoding
+/// Also the beacon
+pub type Secret<E> = GT<E>;
+
+/// The Share type
+pub type Share<E> = <E as PairingEngine>::G1Projective;
+pub type Commitment<E> = <E as PairingEngine>::G2Affine;
+pub type CommitmentP<E> = <E as PairingEngine>::G2Projective;
+pub type SecretKey<E> = Scalar<E>;
+pub type PublicKey<E> = <E as PairingEngine>::G1Projective;
+/// The Encryption group is the same as the public key group
+/// Which is G1 for type 3 pairings
+pub type Encryptions<E> = PublicKey<E>;
 
 pub fn std_rng() -> StdRng {
     rand::rngs::StdRng::from_entropy()
 }
 
-pub fn rand_g2_generator<R>(rng: &mut R) 
-    -> G2P
+pub fn rand_h2_generator<R, E>(rng: &mut R) 
+    -> E::G2Projective
     where R:Rng+?Sized, 
+    E: PairingEngine,
 {
-    G2::prime_subgroup_generator().mul(Scalar::rand(rng))
+    E::G2Affine::prime_subgroup_generator()
+        .mul(E::Fr::rand(rng))
 }
 
+mod precomputes;
+
+pub type E = Bls12_381;
+
 mod test;
+
+#[macro_use]
+extern crate derive_builder;
