@@ -1,5 +1,4 @@
 mod ark_serde;
-use ark_bls12_381::Bls12_381;
 pub use ark_serde::*;
 
 pub mod hash;
@@ -63,8 +62,6 @@ pub fn rand_h2_generator<R, E>(rng: &mut R)
 }
 
 mod precomputes;
-
-pub type E = Bls12_381;
 
 mod test;
 

@@ -8,7 +8,6 @@ use crate::{Commitment, DbsContext, DbsError,
     }, 
     precomputes::Precomputation
 };
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 pub use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 pub use ark_ff::{Field, One, PrimeField, UniformRand, Zero, FromBytes};
 pub use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
@@ -128,8 +127,8 @@ where E:PairingEngine,
         let n = self.n;
         let t = self.t;
         // Generate random co-efficients a0,a1,...,at
-        let vec: Vec<_> = (0..t+1).map(|_i| {
-            if _i == 0 {
+        let vec: Vec<_> = (0..t+1).map(|i| {
+            if i == 0 {
                 secret
             } else {
                 Scalar::<E>::rand(rng)
@@ -138,23 +137,26 @@ where E:PairingEngine,
         
         // Set Polynomial p(x) = a_0 + a_1x + a_2x^2 + ... + a_tx^t
         let polynomial = Polynomial::<E>::from_coefficients_vec(vec);
+        
         // s_i = p(i)
-        let evaluations: Vec<Scalar<E>> = (0..n).map(|i| 
+        let evaluations: Vec<_> = (0..n).map(|i| 
             polynomial.evaluate(&Scalar::<E>::from(i as u64 + 1))
         ).collect();
+
         // v_i = g2^s_i
         let commitments = self.FBMultiScalarMulG2(&evaluations);
+        
         // c_i = pk_i^{s_i}
         let encryptions: Vec<_> = (0..n).map(|i| {
             self.public_keys[i].mul(evaluations[i].into_repr())
         }).collect();
-        // dleq.prove(s_i,g,c_i,h,v_i)
+        // dleq.prove(s_i,g1,e_i,g2,c_i)
         let proof:Vec<_> = (0..self.n).map(|i| {
             Dleq::<E::G1Projective, E::G2Projective, E::Fr>::prove( 
                 &evaluations[i], 
                 &self.public_keys[i], 
                 &encryptions[i], 
-                &self.h2p, 
+                &self.optimizations.g2p, 
                 &commitments[i],
                  dss_sk, rng)
         }).collect();
@@ -184,7 +186,7 @@ where E:PairingEngine,
                 &pvec.proofs[i], 
                 &self.public_keys[i], 
                 &pvec.encs[i], 
-                &self.h2p, 
+                &self.optimizations.g2p, 
                 &pvec.comms[i].into_projective(), 
                 dss_pk) 
             {
@@ -435,5 +437,5 @@ where E: PairingEngine
         ctx.codewords[i].into()
     }).collect();
     let code_check = DbsContext::<E>::VBMultiScalarMul(&affine_pvss_comms, &codes);
-    code_check != E::G2Projective::zero()
+    code_check == E::G2Projective::zero()
 }

@@ -26,7 +26,7 @@ pub struct Precomputation<E: PairingEngine> {
 impl<E: PairingEngine> Precomputation<E> {
     pub fn new<R>(n: usize, 
         t: usize, 
-        h2: E::G2Projective, 
+        _h2: E::G2Projective, 
         my_key: Scalar<E>, 
         rng: &mut R) -> Self 
     where R: Rng + ?Sized,
@@ -73,22 +73,29 @@ fn compute_inv_map<E:PairingEngine>(n:usize) -> HashMap<(usize, usize), Scalar<E
 fn random_codewords<R, E:PairingEngine>(n:usize, t:usize, rng:&mut R) -> Vec<Scalar<E>>
 where R: Rng + ?Sized,
 {
-    let vec: Vec<_> = (0..n - t - 1).map(|_| Scalar::<E>::rand(rng)).collect();
-    let polynomial = Polynomial::<E>::from_coefficients_vec(vec);
-    let indices: Vec<_> = (0..n).map(|i| (i, Scalar::<E>::from(i as u64 + 1))).collect();
+    let vec: Vec<_> = (0..n - t - 1)
+        .map(|_| Scalar::<E>::rand(rng))
+        .collect();
+    
+    let polynomial = 
+        Polynomial::<E>::from_coefficients_vec(vec);
+    let indices: Vec<_> = (0..n)
+        .map(|i| (i, Scalar::<E>::from(i as u64 + 1)))
+        .collect();
+
     let codewords: Vec<_> = indices
-    .iter()
-    .map(|&(i, scalar_i)| {
-        indices
         .iter()
-        .map(|&(j, scalar_j)| {
-            if j == i {
-                Scalar::<E>::one()
-            } else {
-                (scalar_i - scalar_j).inverse().unwrap()
-            }
-        })
-        .fold(Scalar::<E>::one(), |v, x| v * x)
+        .map(|&(i, scalar_i)| {
+            indices
+            .iter()
+            .map(|&(j, scalar_j)| {
+                if j == i {
+                    Scalar::<E>::one()
+                } else {
+                    (scalar_i - scalar_j).inverse().unwrap()
+                }
+            })
+            .fold(Scalar::<E>::one(), |v, x| v * x)
         * polynomial.evaluate(&scalar_i)
     })
     .collect();

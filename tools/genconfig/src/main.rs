@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut pvss_sk_map = Vec::new();
 
     let mut rng = crypto::std_rng();
-    let h2 = crypto::rand_h2_generator::<_,crypto::E>(&mut rng);
+    let h2 = crypto::rand_h2_generator::<_,types::E>(&mut rng);
 
     for _i in 0..num_nodes {
         let pvss_keypair = Keypair::generate_keypair(&mut rng);

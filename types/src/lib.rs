@@ -1,4 +1,5 @@
 mod msg;
+use ark_bls12_381::Bls12_381;
 pub use msg::*;
 
 /// The height of the block
@@ -8,8 +9,21 @@ pub type Replica = usize;
 /// The round or epoch
 pub type Epoch = usize;
 
-/// The Pairing curve family
-pub type E = crypto::E;
+/// We will use Bls12_381 for OptRand
+/// Other users of the crypto library can change the pairing curve accordingly
+/// Available options: (Source: https://github.com/arkworks-rs/curves)
+/// - Bls12_371
+/// - Bls12_381
+/// - Bn254
+/// - bw6_761
+/// - cp6_782 
+/// - mnt4_298
+/// - mnt4_753
+/// - mnt6_298
+/// - mnt6_753
+pub type E = Bls12_381;
+
+// Instantiate specific types for use in the rest of the codebase
 pub type AggregatePVSS = crypto::AggregatePVSS<E>;
 pub type DecompositionProof = crypto::DecompositionProof<E>;
 pub type Decryption = crypto::Decryption<E>;

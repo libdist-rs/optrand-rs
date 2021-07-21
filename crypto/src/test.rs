@@ -15,9 +15,14 @@ mod keypair_tests {
 mod ctx_tests {
     use crate::{DbsContext, Keypair, std_rng, Scalar};
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, AffineCurve};
+    use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
+    use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
     use ark_std::UniformRand;
-    use ark_ff::PrimeField;
+    use ark_ff::{PrimeField, to_bytes};
+    use crypto_lib::hash::ser_and_hash;
+
+    type E = Bls12_381;
+    pub type Polynomial<E> = DensePolynomial<Scalar<E>>;
 
     #[test]
     fn test_gen() {
@@ -26,24 +31,96 @@ mod ctx_tests {
         let n = 21;
         let t = 10;
         let keypairs:Vec<_> = (0..n).map(|_i| {
-            let kpair = Keypair::<Bls12_381>::generate_keypair(&mut rng);
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
             kpair
         }).collect();
         let public_keys = (0..n).map(|i| {
             keypairs[i].1
         }).collect();
-        let _ = DbsContext::<Bls12_381>::new(&mut rng, h2, n, t, 0, public_keys, keypairs[0].0);
+        let _ = DbsContext::<E>::new(&mut rng, h2, n, t, 0, public_keys, keypairs[0].0);
+    }
+
+    #[test]
+    fn test_generation() {
+        let mut rng = std_rng();
+        let h2 = <Bls12_381 as PairingEngine>::G2Affine::prime_subgroup_generator().mul(Scalar::<Bls12_381>::rand(&mut rng).into_repr());
+        let n = 21;
+        let t = 10;
+        let keypairs:Vec<_> = (0..n).map(|_i| {
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
+            kpair
+        }).collect();
+        let public_keys = (0..n).map(|i| {
+            keypairs[i].1
+        }).collect();
+        let dbs_ctx = DbsContext::<E>::new(&mut rng, h2, n, t, 0, public_keys, keypairs[0].0);
+
+        let secret = Scalar::<E>::rand(&mut rng);
+
+        // Generate random co-efficients a0,a1,...,at
+        let vec: Vec<_> = (0..t+1).map(|i| {
+            if i == 0 {
+                secret
+            } else {
+                Scalar::<E>::rand(&mut rng)
+            }
+        }).collect();
+        
+        // Set Polynomial p(x) = a_0 + a_1x + a_2x^2 + ... + a_tx^t
+        let polynomial = Polynomial::<E>::from_coefficients_vec(vec);
+        
+        // s_i = p(i)
+        let evaluations: Vec<_> = (0..n).map(|i| 
+            polynomial.evaluate(&Scalar::<E>::from(i as u64 + 1))
+        ).collect();
+
+        // v_i = g2^s_i
+        let left_commitments = dbs_ctx.FBMultiScalarMulG2(&evaluations);
+        let right_commitments: Vec<_> = (0..dbs_ctx.n).map(|i| {
+            dbs_ctx.optimizations.g2p.mul(evaluations[i].into_repr())
+        }).collect();
+
+        for i in 0..n {
+            assert_eq!(left_commitments[i], right_commitments[i]);
+        }
+
+        let encryptions: Vec<_> = (0..n).map(|i| {
+            dbs_ctx.public_keys[i].mul(evaluations[i].into_repr())
+        }).collect();
+
+        type G1 = <E as PairingEngine>::G1Projective;
+        type G2 = <E as PairingEngine>::G2Projective;
+
+        let w = <E as PairingEngine>::Fr::rand(&mut rng);
+        let a1: G1 = dbs_ctx.public_keys[0].mul(w.into_repr());
+        let a2: G2 = dbs_ctx.optimizations.g2p.mul(w.into_repr());
+
+        let mut buf = Vec::new();
+        buf.append(&mut to_bytes!(a1).unwrap()); // a1
+        buf.append(&mut to_bytes!(a2).unwrap()); // a2
+        buf.append(&mut to_bytes!(encryptions[0]).unwrap()); // x
+        buf.append(&mut to_bytes!(right_commitments[0].into_affine()).unwrap()); // y
+        let left_hash = ser_and_hash(&buf);
+        
+        buf.clear();
+        buf.append(&mut to_bytes!(a1).unwrap()); // a1
+        buf.append(&mut to_bytes!(a2).unwrap()); // a2
+        buf.append(&mut to_bytes!(encryptions[0]).unwrap()); // x
+        buf.append(&mut to_bytes!(right_commitments[0].into_affine().into_projective().into_affine()).unwrap()); // y
+
+        let right_hash = ser_and_hash(&buf);
+
+        assert_eq!(left_hash, right_hash);
     }
 }
 
 
 #[cfg(test)]
 mod dleq_tests {
-    use crate::{DbsContext, Keypair, PublicKey, Scalar, SecretKey, std_rng};
+    use crate::{DbsContext, Keypair, Scalar, std_rng};
     use ark_bls12_381::Bls12_381;
     use ark_std::UniformRand;
     use ark_ec::{PairingEngine, AffineCurve};
-    use ark_ff::PrimeField;
 
     type E = Bls12_381;
 
@@ -52,8 +129,8 @@ mod dleq_tests {
         let mut rng = std_rng();
         let n = 101;
         let t = 50;
-        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
-        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
+        let mut public_keys: Vec<_> = Vec::new();
+        let mut secret_keys: Vec<_> = Vec::new();
         let dss_kpair = crypto_lib::Keypair::generate_secp256k1();
         let dss_pk = dss_kpair.public();
         for _i in 0..n {
@@ -61,14 +138,24 @@ mod dleq_tests {
             secret_keys.push(kpair.0);
             public_keys.push(kpair.1);
         }
-        let h2 = <E as PairingEngine>::G2Affine::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng).into_repr());
+        let h2 = <E as PairingEngine>::G2Affine::prime_subgroup_generator()
+            .mul(Scalar::<E>::rand(&mut rng));
 
         let dbs_ctx = DbsContext::<E>::new(&mut rng, h2, n, t, 0, public_keys, secret_keys[0]);
         let pvec = 
             dbs_ctx.generate_shares( &dss_kpair, &mut rng);
         for i in 0..n {
             assert_eq!(None, 
-                crate::Dleq::verify(&pvec.proofs[i], &dbs_ctx.public_keys[i], &pvec.encs[i], &dbs_ctx.optimizations.g2p, &pvec.comms[i].into_projective(), &dss_pk));
+                crate::Dleq::<<E as PairingEngine>::G1Projective, 
+                    <E as PairingEngine>::G2Projective, 
+                    <E as PairingEngine>::Fr>::verify(
+                        &pvec.proofs[i], 
+                        &dbs_ctx.public_keys[i], 
+                        &pvec.encs[i], 
+                        &dbs_ctx.optimizations.g2p, 
+                        &pvec.comms[i].into_projective(), 
+                        &dss_pk)
+                );
         }
     }
 }
@@ -77,7 +164,7 @@ mod dleq_tests {
 mod dbs_tests {
     use crate::{DbsContext, Keypair, PublicKey, Scalar, SecretKey, std_rng};
     use ark_bls12_381::Bls12_381;
-    use ark_std::UniformRand;
+    use ark_std::{UniformRand, Zero};
     use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
     use ark_ff::PrimeField;
     use fnv::FnvHashMap as HashMap;
@@ -108,6 +195,14 @@ mod dbs_tests {
         let idx = 0;
         let pvec = 
             dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
+        
+        type G2P = <E as PairingEngine>::G2Projective;
+        let coding_check = (0..n).map(|i| {
+                pvec.comms[i].mul(dbs_ctx.optimizations.codewords[i])
+            }).fold(G2P::zero(), |acc, c| {
+                acc + c
+            }) == G2P::zero(); 
+        assert_eq!(coding_check, true);
         assert_eq!(None, dbs_ctx.verify_sharing(&pvec, &dss_pk[idx]));
     }
     

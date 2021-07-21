@@ -51,8 +51,7 @@ pub struct Dleq<G1, G2, S>
 
 impl<G1, G2, S> Dleq<G1, G2, S> 
 where 
-    G1: ProjectiveCurve
-        +,
+    G1: ProjectiveCurve,
     G2: ProjectiveCurve
         + Copy,
     S: PrimeField 
@@ -73,16 +72,21 @@ where
         let w = S::rand(rng);
         let a1: G1 = g.mul(w.into_repr());
         let a2: G2 = h.mul(w.into_repr());
+
         let mut buf = Vec::new();
         buf.append(&mut to_bytes!(a1).unwrap()); // a1
         buf.append(&mut to_bytes!(a2).unwrap()); // a2
-        buf.append(&mut to_bytes!(x).unwrap()); // x
-        buf.append(&mut to_bytes!(y).unwrap()); // y
+        buf.append(&mut to_bytes!(x.into_affine()).unwrap()); // x
+        buf.append(&mut to_bytes!(y.into_affine()).unwrap()); // y
         let hash = ser_and_hash(&buf);
+
         let mut rngs: StdRng = SeedableRng::from_seed(hash);
         let c = S::rand(&mut rngs);
         let r = w - c * knowledge;
-        let sig = my_key.sign(&hash).unwrap();
+
+        let sig = my_key
+            .sign(&hash)
+            .expect("Failed to sign the DLEQ Proof");
         DleqProof::<G1, G2, S> {
             a1, 
             a2, 
@@ -105,9 +109,10 @@ where
         let mut buf = Vec::new();
         buf.append(&mut to_bytes!(pi.a1).unwrap());
         buf.append(&mut to_bytes!(pi.a2).unwrap());
-        buf.append(&mut to_bytes!(x).unwrap());
-        buf.append(&mut to_bytes!(y).unwrap());
+        buf.append(&mut to_bytes!(x.into_affine()).unwrap());
+        buf.append(&mut to_bytes!(y.into_affine()).unwrap());
         let hash = ser_and_hash(&buf);
+        
         let mut rngs: StdRng = SeedableRng::from_seed(hash);
         let c = S::rand(&mut rngs);
         if c != pi.c {
