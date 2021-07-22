@@ -30,6 +30,8 @@ pub struct Precomputation<E: PairingEngine> {
     /// OPTIMIZATIONS: Pre-compute tables for public keys
     pub(crate) pk_tables: Vec<Table1<E>>,
     pub(crate) pub_keys_p: Vec<E::G1Prepared>,
+    /// OPTIMIZATIONS: Pre-compute lagranges for the gs check
+    pub(crate) fixed_lagranges: Vec<Scalar<E>>,
 }
 
 impl<E: PairingEngine> Precomputation<E> {
@@ -52,12 +54,30 @@ impl<E: PairingEngine> Precomputation<E> {
         let pub_keys_p : Vec<_>= (0..pub_keys.len()).map(|i| {
             pub_keys[i].into_affine().into()
         }).collect();
+        let lagrange_inverses = compute_inv_map::<E>(n);
+
+        let indices:Vec<_> = (0..t+1).map(|i| (i, Scalar::<E>::from(i as u64 + 1))).collect();
+        let lagranges: Vec<_> = indices
+        .iter()
+        .map(|&(i, _scalar_i)| {
+                indices
+                    .iter()
+                    .map(|&(j, scalar_j)| {
+                        if j == i {
+                            Scalar::<E>::one()
+                        } else {
+                            scalar_j * lagrange_inverses[&(j,i)]
+                        }
+                    })
+                    .fold(Scalar::<E>::one(), |lambda, x| lambda * x)
+        }).collect();
+
         opt
             .g1p(g1p)
             .g2p(g2p)
             .my_key_inv(my_key.inverse()
                 .expect("Failed to compute the inverse of my secret key"))
-            .lagrange_inverses(compute_inv_map::<E>(n))
+            .lagrange_inverses(lagrange_inverses)
             .codewords(random_codewords::<R, E>(n, t, rng))
             .scalar_bits(scalar_bits)
             .window_size(window_size)
@@ -68,6 +88,7 @@ impl<E: PairingEngine> Precomputation<E> {
             .g1_prepared(g1p.into().into())
             .g2_prepared(g2p.into().into())
             .h2_prepared(h2.into().into())
+            .fixed_lagranges(lagranges)
                 ;
         opt.build().expect("Failed to build the precomputation module")
     }

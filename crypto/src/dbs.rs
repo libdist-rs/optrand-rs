@@ -1,9 +1,4 @@
-use crate::{Commitment, DbsContext, DbsError, 
-    Dleq, Encryptions, 
-    Polynomial, Scalar, 
-    Share, 
-    precomputes::Precomputation
-};
+use crate::{Commitment, DbsContext, DbsError, Dleq, Encryptions, Polynomial, Scalar, Share, SingleDleq, precomputes::Precomputation};
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Polynomial as Poly, UVPolynomial};
@@ -77,12 +72,17 @@ where E:PairingEngine,
             .iter()
             .map(|v| v.into_affine())
             .collect();
+
+        let gs = self.optimizations.g2p.mul(secret.into_repr());
+        let sok = SingleDleq::<E::G2Projective, Scalar<E>>::prove(&secret, &self.optimizations.g2p, &gs, dss_sk, rng);
         
         // Return commitments, encryptions, and DLEQ proofs
         PVSSVec {
             comms: commitments,
             encs: encryptions,
             proofs: proof,
+            gs,
+            sig_of_knowledge: sok,
         }
     }
 
@@ -111,6 +111,25 @@ where E:PairingEngine,
                 return Some(DbsError::DlogProofCheckFailed(i));
             }
         }
+
+        // Reconstruct and check if the gs is correct
+        let into_repr: Vec<_> = (0..self.t+1).map(|i| {
+            self.optimizations.fixed_lagranges[i].into()
+        }).collect();
+        let res = DbsContext::<E>::var_base_scalar_mul(&pvec.comms[0..self.t+1].to_vec(), &into_repr);
+
+        if res != pvec.gs {
+            return Some(DbsError::InvalidGs)
+        }
+
+        if let Some(x) = SingleDleq::verify(
+            &pvec.sig_of_knowledge, 
+            &self.optimizations.g2p, 
+            &pvec.gs, 
+            dss_pk) 
+        {
+            return Some(x)
+        }
         None
     }
     
@@ -120,7 +139,7 @@ where E:PairingEngine,
     pub fn aggregate(&self,
         indices: &[usize], // whose shares are we combining
         pvec: Vec<PVSSVec<E>>,
-    ) -> (AggregatePVSS<E>, Vec<DecompositionProof<E>>) 
+    ) -> (AggregatePVSS<E>, DecompositionProof<E>) 
     {
         assert_eq!(indices.len(), pvec.len());
 
@@ -152,25 +171,20 @@ where E:PairingEngine,
             comms: combined_comms,
         };
         // Decomposition proofs
-        let agg_pi = (0..self.n).map(|i| {
-            let proofs = (0..pvec.len())
-                .map(|j| pvec[j].proofs[i].clone())
-                .collect();
-            let nencs = (0..pvec.len())
-                .map(|j| pvec[j].encs[i])
-                .collect();
-            let ncomms = (0..pvec.len())
-                .map(|j| pvec[j].comms[i])
-                .collect();
-            DecompositionProof {
-                idx: i,
-                indices: indices.to_vec(),
-                proof: proofs,
-                encs: nencs,
-                comms: ncomms,
-            }
-        }).collect();
-        (agg_pvss, agg_pi)
+        let mut dleq_proof = Vec::with_capacity(pvec.len());
+        let mut gs_vec = Vec::with_capacity(pvec.len());
+        for v in pvec {
+            dleq_proof.push(v.sig_of_knowledge);
+            gs_vec.push(v.gs);
+        }
+
+        let decomp_proof = DecompositionProof{
+            indices: indices.to_vec(),
+            dleq_proof,
+            gs_vec,
+        };
+
+        (agg_pvss, decomp_proof)
     }
     
     /// pverify verifies if the public part of the combined PVSS vector is correct
@@ -209,42 +223,31 @@ where E:PairingEngine,
         pk_map: &HashMap<usize, crypto_lib::PublicKey>
     ) -> Option<DbsError> 
     {
-        assert!(agg_pi.indices.len() == agg_pi.comms.len());
-
-        // Check if all the v multiply to v_i in agg_pvss
-        let combined_v = (0..self.t+1).fold(
-            E::G2Projective::zero(), 
-            |acc,i| {
-                acc + agg_pi.comms[i].into_projective()
-            }
-        );
-        // IntoProjective is cheaper than into_affine of the combined one
-        if combined_v != agg_pvss.comms[self.origin as usize].into_projective() {
-            return Some(DbsError::CommitmentNotDecomposing);
+        let into_repr: Vec<_> = (0..self.t+1).map(|i| {
+            self.optimizations.fixed_lagranges[i].into()
+        }).collect();
+        let res = DbsContext::<E>::var_base_scalar_mul(&agg_pvss.comms[0..self.t+1].to_vec(), &into_repr);
+        
+        let mut init = Commitment::<E>::zero().into_projective();
+        for v in &agg_pi.gs_vec {
+            init = init + v;
         }
 
-        // Check if all the c multiply to c_i in agg_pvss
-        let combined_c = (0..self.t+1).fold(E::G1Projective::zero(), |acc,i| {
-            acc + agg_pi.encs[i]
-        });
-        if combined_c != agg_pvss.encs[self.origin as usize] {
-            return Some(DbsError::EncryptionNotDecomposing);
+        if res != init {
+            return Some(DbsError::InvalidGs);
         }
-
-        // Check DLEQ between vi and ci
-        for id in 0..self.t+1 {
-            if let Some(x) = Dleq::verify(
-                &agg_pi.proof[id], 
-                &self.public_keys[self.origin as usize], 
-                &agg_pi.encs[id], 
+        
+        for i in 0..agg_pi.dleq_proof.len() {
+            if let Some(x) = SingleDleq::verify(
+                &agg_pi.dleq_proof[i], 
                 &self.optimizations.g2p, 
-                &agg_pi.comms[id].into_projective(), 
-                &pk_map[&(agg_pi.indices[id])]
-            )
-            {
+                &agg_pi.gs_vec[i], 
+                &pk_map[&agg_pi.indices[i]]
+            ) {
                 return Some(x);
             }
         }
+
         None
     }
     

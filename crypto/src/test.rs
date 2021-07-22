@@ -204,6 +204,12 @@ mod dbs_tests {
             }) == G2P::zero(); 
         assert_eq!(coding_check, true);
         assert_eq!(None, dbs_ctx.verify_sharing(&pvec, &dss_pk[idx]));
+
+        let into_repr: Vec<_> = (0..dbs_ctx.t+1).map(|i| {
+            dbs_ctx.optimizations.fixed_lagranges[i].into()
+        }).collect();
+        let res = DbsContext::<E>::var_base_scalar_mul(&pvec.comms[0..dbs_ctx.t+1].to_vec(), &into_repr);
+        assert_eq!(res, pvec.gs);
     }
 
     #[test]
@@ -256,7 +262,7 @@ mod dbs_tests {
         assert_eq!(None, dbs_ctx[0].pverify(&agg_pvss));
         for i in 0..n {
             assert_eq!(None, 
-                dbs_ctx[i as usize].decomp_verify(&agg_pvss, &agg_pi[i], &dss_pk)
+                dbs_ctx[i as usize].decomp_verify(&agg_pvss, &agg_pi, &dss_pk)
             );
         }
     }

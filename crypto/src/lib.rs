@@ -64,6 +64,7 @@ pub fn rand_h2_generator<R, E>(rng: &mut R)
 
 mod precomputes;
 mod pvss;
+pub use pvss::*;
 
 mod test;
 

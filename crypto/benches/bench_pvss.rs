@@ -228,7 +228,7 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &_t| {
             b.iter(|| {
                 // Insert code that you want tested here
-                let _ = dbs_ctx[0].decomp_verify(&agg_pvss, &agg_pi[0], &dss_pk);
+                let _ = dbs_ctx[0].decomp_verify(&agg_pvss, &agg_pi, &dss_pk);
             });
         });
     }

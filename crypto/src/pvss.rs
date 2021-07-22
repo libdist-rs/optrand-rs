@@ -1,11 +1,11 @@
-use crate::{Commitment, DleqProof, Encryptions, Scalar, Secret, 
+use crate::{Commitment, DleqProof, SingleDleqProof, Encryptions, Scalar, Secret, 
     Share, 
     ark_serde::{
         canonical_deserialize, 
         canonical_serialize
     }
 };
-use ark_ec::PairingEngine;
+use ark_ec::{AffineCurve, PairingEngine};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,12 +15,22 @@ where E: PairingEngine,
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
     pub comms: Vec<Commitment<E>>, 
+
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
     pub encs: Vec<Encryptions<E>>,
+
     #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]
     #[serde(bound(deserialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Deserialize<'de>"))]
     pub proofs: Vec<DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>>,
+
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub gs: E::G2Projective,
+
+    #[serde(bound(serialize = "SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>: Serialize"))]
+    #[serde(bound(deserialize = "SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>: Deserialize<'de>"))]
+    pub sig_of_knowledge: SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>
 }
 
 
@@ -32,6 +42,7 @@ where E: PairingEngine,
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
     pub encs: Vec<Encryptions<E>>,
+
     /// comms contains the combined commitments v := (v1, v2, ..., vn)
     #[serde(serialize_with = "canonical_serialize")]
     #[serde(deserialize_with = "canonical_deserialize")]
@@ -42,22 +53,15 @@ where E: PairingEngine,
 pub struct DecompositionProof<E> 
 where E: PairingEngine,
 {
-    /// The index in the combined vector for which this is a decomposition proof
-    pub idx: usize,
     /// indices of the nodes whose shares we have combined
     pub indices: Vec<usize>,
-    /// Constituent vi
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub comms: Vec<Commitment<E>>,
-    /// Constituent ci
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub encs: Vec<Encryptions<E>>,
     /// A vector of dleq proofs for all constituent vi and ci for [n]
-    #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]
-    #[serde(bound(deserialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Deserialize<'de>"))]
-    pub proof: Vec<DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>>,
+    #[serde(bound(serialize = "SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>: Serialize"))]
+    #[serde(bound(deserialize = "SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>: Deserialize<'de>"))]
+    pub dleq_proof: Vec<SingleDleqProof<<Commitment<E> as AffineCurve>::Projective, Scalar<E>>>,
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub gs_vec: Vec<<Commitment<E> as AffineCurve>::Projective>,
 }
 
 /// Decryption data structure that holds the decrypted share in G1 and 

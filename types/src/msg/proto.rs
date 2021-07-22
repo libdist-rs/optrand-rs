@@ -113,7 +113,7 @@ impl WireReady for ProtocolMsg {
             {
                 if agg.encs.len() != agg.comms.len() {
                     ProtocolMsg::InvalidMessage
-                } else if decomp.encs.len() != decomp.comms.len() || decomp.encs.len() != decomp.proof.len() {
+                } else if decomp.indices.len() != decomp.dleq_proof.len() || decomp.indices.len() != decomp.gs_vec.len() {
                     ProtocolMsg::InvalidMessage
                 } else {
                     ProtocolMsg::PVSSSharingReady(e, agg, decomp)

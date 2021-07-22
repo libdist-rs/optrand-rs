@@ -10,6 +10,8 @@ pub enum DbsError {
     // Single PVSS verification
     CodingCheckFailed,
     DlogProofCheckFailed(usize),
+    InvalidGs,
+    SingleDleqProofCheckFailed,
 
     // Pverify checks
     PairingCheckFailed(usize),
