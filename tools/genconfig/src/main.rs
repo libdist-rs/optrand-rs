@@ -129,8 +129,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         for _k in 0..20 {
             let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
             let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-            let pvec = [sh1, sh2];
-            let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
+            let pvec = vec![sh1, sh2];
+            let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, pvec);
             // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
             let h = crypto::hash::ser_and_hash(&combined_pvss);
             for j in 0..num_nodes {
@@ -143,8 +143,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let sh1 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
         let sh2 = node[i].pvss_ctx.generate_shares(&keypairs[&i], &mut rng);
-        let pvec = [sh1, sh2];
-        let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, &pvec);
+        let pvec = vec![sh1, sh2];
+        let (combined_pvss,_) = node[i].pvss_ctx.aggregate(&indices, pvec);
         // Put combined_pvss in everyone's buffers, i.e., in rand_queue for node 1
         let h = crypto::hash::ser_and_hash(&combined_pvss);
         for j in 0..num_nodes {

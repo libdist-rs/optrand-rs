@@ -1,6 +1,6 @@
-use ark_ec::{PairingEngine, msm::FixedBaseMSM};
+use ark_ec::{PairingEngine, ProjectiveCurve, msm::FixedBaseMSM};
 use fnv::FnvHashMap as HashMap;
-use crate::{Scalar};
+use crate::{Keypair, PublicKey, Scalar};
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField};
 use rand::{Rng};
@@ -8,26 +8,36 @@ use ark_poly::{UVPolynomial, Polynomial as PolyT};
 use crate::Polynomial;
 use ark_std::UniformRand;
 
+type Table1<E> = Vec<Vec<<E as PairingEngine>::G1Affine>>;
+type Table2<E> = Vec<Vec<<E as PairingEngine>::G2Affine>>;
+
 #[derive(Debug, Clone, Builder)]
 pub struct Precomputation<E: PairingEngine> {
     pub(crate) g1p: E::G1Projective,
     pub(crate) g2p: E::G2Projective,
+    pub(crate) g1_prepared: E::G1Prepared,
+    pub(crate) g2_prepared: E::G2Prepared,
+    pub(crate) h2_prepared: E::G2Prepared,
     pub(crate) my_key_inv: Scalar<E>,
     pub(crate) scalar_bits: usize,
     pub(crate) window_size: usize,
-    pub(crate) g1_table: Vec<Vec<E::G1Affine>>,
-    pub(crate) g2_table: Vec<Vec<E::G2Affine>>,
+    pub(crate) g1_table: Table1<E>,
+    pub(crate) g2_table: Table2<E>,
     /// OPTIMIZATIONS: Pre-computations for (n,t) degree check
     pub(crate) lagrange_inverses: HashMap<(usize, usize),Scalar<E>>,
     /// OPTIMIZATIONS: Pre-compute sk^-1 for decryptions
     pub(crate) codewords: Vec<Scalar<E>>,
+    /// OPTIMIZATIONS: Pre-compute tables for public keys
+    pub(crate) pk_tables: Vec<Table1<E>>,
+    pub(crate) pub_keys_p: Vec<E::G1Prepared>,
 }
 
 impl<E: PairingEngine> Precomputation<E> {
     pub fn new<R>(n: usize, 
         t: usize, 
-        _h2: E::G2Projective, 
-        my_key: Scalar<E>, 
+        h2: E::G2Projective, 
+        my_key: Scalar<E>,
+        pub_keys: Vec<PublicKey<E>>,
         rng: &mut R) -> Self 
     where R: Rng + ?Sized,
     {
@@ -36,6 +46,12 @@ impl<E: PairingEngine> Precomputation<E> {
         let window_size = FixedBaseMSM::get_mul_window_size(t + 1);
         let g1p = E::G1Affine::prime_subgroup_generator().into_projective();
         let g2p = E::G2Affine::prime_subgroup_generator().into_projective();
+        let pk_tables = (0..pub_keys.len()).map(|i| {
+            FixedBaseMSM::get_window_table(scalar_bits, window_size, pub_keys[i])
+        }).collect();
+        let pub_keys_p : Vec<_>= (0..pub_keys.len()).map(|i| {
+            pub_keys[i].into_affine().into()
+        }).collect();
         opt
             .g1p(g1p)
             .g2p(g2p)
@@ -47,11 +63,27 @@ impl<E: PairingEngine> Precomputation<E> {
             .window_size(window_size)
             .g1_table(FixedBaseMSM::get_window_table(scalar_bits, window_size, g1p))
             .g2_table(FixedBaseMSM::get_window_table(scalar_bits, window_size, g2p))
+            .pk_tables(pk_tables)
+            .pub_keys_p(pub_keys_p)
+            .g1_prepared(g1p.into().into())
+            .g2_prepared(g2p.into().into())
+            .h2_prepared(h2.into().into())
                 ;
         opt.build().expect("Failed to build the precomputation module")
     }
+
+    pub fn encyrpt(&self, id: usize, val: E::Fr) -> E::G1Projective {
+        let res = FixedBaseMSM::multi_scalar_mul(self.scalar_bits, 
+            self.window_size, 
+            &self.pk_tables[id],
+            &[val] 
+        );
+        res[0]
+    }
 }
 
+/// Compute a map containing the inverses
+/// TODO(Optimize)
 fn compute_inv_map<E:PairingEngine>(n:usize) -> HashMap<(usize, usize), Scalar<E>> 
 {
     // let n_int = n as i128;
@@ -70,6 +102,7 @@ fn compute_inv_map<E:PairingEngine>(n:usize) -> HashMap<(usize, usize), Scalar<E
     inv_map
 }
 
+/// Generate random codewords for the pairing check
 fn random_codewords<R, E:PairingEngine>(n:usize, t:usize, rng:&mut R) -> Vec<Scalar<E>>
 where R: Rng + ?Sized,
 {
@@ -103,8 +136,13 @@ where R: Rng + ?Sized,
 }
 
 impl<E:PairingEngine> std::default::Default for Precomputation<E> {
+    /// The default implementation generates parameters for n=4, t=2
     fn default() -> Self {
         let mut rng = crate::std_rng();
-        Precomputation::new(4, 2, E::G2Projective::rand(&mut rng), Scalar::<E>::rand(&mut rng), &mut rng)
+        let (n,t) = (1,0);
+        let pub_keys: Vec<_> = (0..n).map(|_i| {
+            Keypair::<E>::generate_keypair(&mut rng).1
+        }).collect();
+        Precomputation::new(n, t, E::G2Projective::rand(&mut rng), Scalar::<E>::rand(&mut rng),pub_keys, &mut rng)
     }
 }

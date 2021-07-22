@@ -7,8 +7,8 @@ use crate::ark_serde::{canonical_deserialize,canonical_serialize};
 use crate::precomputes::Precomputation;
 use crate::{Scalar, PublicKey};
 use ark_ec::{AffineCurve, PairingEngine};
-pub use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
 use ark_ff::PrimeField;
+use ark_std::One;
 
 #[derive(Debug,Clone,Serialize, Deserialize, Default)]
 #[serde(bound(deserialize = "Precomputation<E>: Default"))]
@@ -48,7 +48,7 @@ where E: PairingEngine,
 impl<E> DbsContext<E> 
 where E:PairingEngine,
 {
-    /// Take h' as input from outside
+    /// Take h2 as input from outside
     /// Otherwise when creating multiple contexts each one will have a different h2 resulting in different beacons being generated
     pub fn new<R>(r: &mut R, 
         h2: E::G2Projective,
@@ -60,9 +60,13 @@ where E:PairingEngine,
     ) -> Self 
     where R: Rng+?Sized,
     {
-        assert!(n>2*t);
-        assert!(public_keys.len() == n);
-        let optimizations = Precomputation::new(n, t, h2, my_key, r);
+        assert!(n>2*t, "n={} must be more than 2*t={}", n, t);
+        assert!(public_keys.len() == n, 
+            "Insufficient public keys, expected {}, got {}", 
+                n, 
+                public_keys.len()
+        );
+        let optimizations = Precomputation::new(n, t, h2, my_key, public_keys.clone(),r);
         Self{
             h2p: h2,
             n,
@@ -79,10 +83,11 @@ where E:PairingEngine,
     pub fn init<R>(&mut self, rng: &mut R) 
     where R:Rng + ?Sized,
     {
-       self.optimizations = Precomputation::new(self.n, self.t, self.h2p, self.my_key, rng);
+       self.optimizations = Precomputation::new(self.n, self.t, self.h2p, self.my_key, self.public_keys.clone(),rng);
     }
 
-    pub fn FBMultiScalarMulG1(&self, scalars: &[Scalar<E>]) -> Vec<E::G1Projective> {
+    /// Computes g1^a1, g1^a2,..., g1^a_x efficiently using pre-computation
+    pub fn fixed_base_scalar_mul_g1(&self, scalars: &[Scalar<E>]) -> Vec<E::G1Projective> {
         FixedBaseMSM::multi_scalar_mul(self.optimizations.scalar_bits, 
             self.optimizations.window_size, 
             &self.optimizations.g1_table,
@@ -90,7 +95,8 @@ where E:PairingEngine,
         )
     }
 
-    pub fn FBMultiScalarMulG2(&self, scalars: &[Scalar<E>]) -> Vec<E::G2Projective> {
+    /// Computes g2^a1, g2^a2,..., g2^a_x efficiently using pre-computation
+    pub fn fixed_base_scalar_mul_g2(&self, scalars: &[Scalar<E>]) -> Vec<E::G2Projective> {
         FixedBaseMSM::multi_scalar_mul(self.optimizations.scalar_bits, 
             self.optimizations.window_size, 
             &self.optimizations.g2_table,
@@ -99,11 +105,37 @@ where E:PairingEngine,
     }
 
     /// Multi-exponentiation code
-    pub fn VBMultiScalarMul<G>(bases: &Vec<G>, 
+    /// Computes sum(ai*xi) for any i
+    pub fn var_base_scalar_mul<G>(bases: &Vec<G>, 
         scalars: &[<<G as AffineCurve>::ScalarField as PrimeField>::BigInt]
     ) -> G::Projective
     where G: AffineCurve,
     {
         VariableBaseMSM::multi_scalar_mul(bases, scalars)
+    }
+
+    /// In order to check that e(g_1, g_2^x) = e(g_1^x, g_2)
+    /// Pass any of the following as parameters:
+    /// 1. (-g1), g2x, g2, g2x
+    /// 2. g1, (-g2x), g2, g2x
+    /// 3. g1, g2x, (-g2), g2x
+    /// 4. g1, g2x, g2, (-g2x)
+    pub fn reduced_pairing_check_part(
+        g1: E::G1Prepared,
+        g2x: E::G2Prepared,
+        g1x: E::G1Prepared,
+        g2: E::G2Prepared,
+    ) -> bool {
+        let lval = <E as PairingEngine>::miller_loop(
+            core::iter::once(
+                &(g1, g2x)
+            )
+        );
+        let rval = <E as PairingEngine>::miller_loop(
+            core::iter::once(
+                &(g1x, g2)
+            )
+        );
+        <E as PairingEngine>::final_exponentiation(&(lval*rval)).unwrap() == E::Fqk::one()
     }
 }

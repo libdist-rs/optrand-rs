@@ -6,11 +6,14 @@ pub enum DbsError {
     LeftCheckFailed,
     RightCheckFailed,
     LengthCheckFailed,
+
     // Single PVSS verification
     CodingCheckFailed,
     DlogProofCheckFailed(usize),
+
     // Pverify checks
     PairingCheckFailed(usize),
+    
     // Decomposition verification checks
     CommitmentNotDecomposing,
     EncryptionNotDecomposing,

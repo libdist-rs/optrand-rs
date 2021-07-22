@@ -75,7 +75,7 @@ mod ctx_tests {
         ).collect();
 
         // v_i = g2^s_i
-        let left_commitments = dbs_ctx.FBMultiScalarMulG2(&evaluations);
+        let left_commitments = dbs_ctx.fixed_base_scalar_mul_g2(&evaluations);
         let right_commitments: Vec<_> = (0..dbs_ctx.n).map(|i| {
             dbs_ctx.optimizations.g2p.mul(evaluations[i].into_repr())
         }).collect();
@@ -205,6 +205,21 @@ mod dbs_tests {
         assert_eq!(coding_check, true);
         assert_eq!(None, dbs_ctx.verify_sharing(&pvec, &dss_pk[idx]));
     }
+
+    #[test]
+    fn test_reduced_pairing() {
+        let mut rng = std_rng();
+        let g1 = <E as PairingEngine>::G1Affine::prime_subgroup_generator();
+        let g2 = <E as PairingEngine>::G2Affine::prime_subgroup_generator();
+        let x = Scalar::<E>::rand(&mut rng);
+
+        let g1x: <E as PairingEngine>::G1Prepared = ((g1).mul(x).into_affine()).into();
+        let g2x: <E as PairingEngine>::G2Prepared = ((g2).mul(x).into_affine()).into();
+
+        assert_eq!(true, 
+        DbsContext::<E>::reduced_pairing_check_part((g1).into(), g2x, g1x, (-g2).into())
+        );
+    }
     
     #[test]
     fn agg_test() {
@@ -237,7 +252,7 @@ mod dbs_tests {
             assert_eq!(None, dbs_ctx[i].verify_sharing(&pvec, &dss_pk[&i]));
             pvecs.push(pvec);
         }
-        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
         assert_eq!(None, dbs_ctx[0].pverify(&agg_pvss));
         for i in 0..n {
             assert_eq!(None, 

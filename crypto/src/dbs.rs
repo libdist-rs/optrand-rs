@@ -1,99 +1,15 @@
 use crate::{Commitment, DbsContext, DbsError, 
-    Dleq, DleqProof, Encryptions, 
-    Polynomial, Scalar, Secret, 
+    Dleq, Encryptions, 
+    Polynomial, Scalar, 
     Share, 
-    ark_serde::{
-        canonical_deserialize, 
-        canonical_serialize
-    }, 
     precomputes::Precomputation
 };
-pub use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
-pub use ark_ff::{Field, One, PrimeField, UniformRand, Zero, FromBytes};
-pub use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
-pub use rand::{rngs::StdRng, Rng, SeedableRng};
+use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
+use ark_ff::{One, PrimeField, UniformRand, Zero};
+use ark_poly::{Polynomial as Poly, UVPolynomial};
+use rand::Rng;
 use fnv::FnvHashMap as HashMap;
-pub use std::{error::Error, fmt};
-use serde::{Serialize, Deserialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AggregatePVSS<E> 
-where E: PairingEngine,
-{
-    /// encs contains the combined encryptions c := (c1, c2, ..., cn)
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub encs: Vec<Encryptions<E>>,
-    /// comms contains the combined commitments v := (v1, v2, ..., vn)
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub comms: Vec<Commitment<E>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DecompositionProof<E> 
-where E: PairingEngine,
-{
-    /// The index in the combined vector for which this is a decomposition proof
-    pub idx: usize,
-    /// indices of the nodes whose shares we have combined
-    pub indices: Vec<usize>,
-    /// Constituent vi
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub comms: Vec<Commitment<E>>,
-    /// Constituent ci
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub encs: Vec<Encryptions<E>>,
-    /// A vector of dleq proofs for all constituent vi and ci for [n]
-    #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]
-    #[serde(bound(deserialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Deserialize<'de>"))]
-    pub proof: Vec<DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>>,
-}
-
-/// Decryption data structure that holds the decrypted share in G1 and 
-/// [OPTIMIZATIONS] - proof of correct decryption (a DLEQ proof) to save pairing computations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Decryption<E> 
-where E: PairingEngine,
-{
-    /// The decrypted share
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub dec: Share<E>,
-    /// The proof that this share was decrypted correctly
-    #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]
-    #[serde(bound(deserialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Deserialize<'de>"))]
-    pub proof: DleqProof<E::G1Projective, E::G1Projective, Scalar<E>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Beacon<E> 
-where E: PairingEngine,
-{
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub beacon: Secret<E>,
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub value: E::G1Projective,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PVSSVec<E> 
-where E: PairingEngine,
-{
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub comms: Vec<Commitment<E>>, 
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
-    pub encs: Vec<Encryptions<E>>,
-    #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]
-    #[serde(bound(deserialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Deserialize<'de>"))]
-    pub proofs: Vec<DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>>,
-}
+use crate::pvss::*;
 
 impl<E> DbsContext<E> 
 where E:PairingEngine,
@@ -118,7 +34,7 @@ where E:PairingEngine,
     pub fn generate_share_for_point<R>(
         &self,
         dss_sk: &crypto_lib::Keypair,
-        rng: &mut R,
+        mut rng: &mut R,
         secret: Scalar<E>,
     ) -> PVSSVec<E>
     where
@@ -126,17 +42,9 @@ where E:PairingEngine,
     {
         let n = self.n;
         let t = self.t;
-        // Generate random co-efficients a0,a1,...,at
-        let vec: Vec<_> = (0..t+1).map(|i| {
-            if i == 0 {
-                secret
-            } else {
-                Scalar::<E>::rand(rng)
-            }
-        }).collect();
-        
-        // Set Polynomial p(x) = a_0 + a_1x + a_2x^2 + ... + a_tx^t
-        let polynomial = Polynomial::<E>::from_coefficients_vec(vec);
+
+        let mut polynomial = Polynomial::<E>::rand(t, &mut rng);
+        polynomial.coeffs[0] = secret;
         
         // s_i = p(i)
         let evaluations: Vec<_> = (0..n).map(|i| 
@@ -144,12 +52,15 @@ where E:PairingEngine,
         ).collect();
 
         // v_i = g2^s_i
-        let commitments = self.FBMultiScalarMulG2(&evaluations);
+        let commitments = self.fixed_base_scalar_mul_g2(&evaluations);
         
+        // TODO(Optimize)
         // c_i = pk_i^{s_i}
         let encryptions: Vec<_> = (0..n).map(|i| {
-            self.public_keys[i].mul(evaluations[i].into_repr())
+            // self.public_keys[i].mul(evaluations[i].into_repr())
+            self.optimizations.encyrpt(i, evaluations[i])
         }).collect();
+
         // dleq.prove(s_i,g1,e_i,g2,c_i)
         let proof:Vec<_> = (0..self.n).map(|i| {
             Dleq::<E::G1Projective, E::G2Projective, E::Fr>::prove( 
@@ -160,11 +71,14 @@ where E:PairingEngine,
                 &commitments[i],
                  dss_sk, rng)
         }).collect();
+
+        // Convert commitments into affine form
         let commitments = commitments
             .iter()
-            .map(|v| 
-                v.into_affine()
-            ).collect();
+            .map(|v| v.into_affine())
+            .collect();
+        
+        // Return commitments, encryptions, and DLEQ proofs
         PVSSVec {
             comms: commitments,
             encs: encryptions,
@@ -174,11 +88,15 @@ where E:PairingEngine,
 
     /// Verifies whether a given PVSS vector is valid
     /// Returns false if the verification fails
-    pub fn verify_sharing(&self, pvec: &PVSSVec<E>, dss_pk: &crypto_lib::PublicKey) -> Option<DbsError>
+    pub fn verify_sharing(&self, 
+        pvec: &PVSSVec<E>, 
+        dss_pk: &crypto_lib::PublicKey
+    ) -> Option<DbsError>
     {
         if !coding_check(&self.optimizations, &pvec.comms) {
             return Some(DbsError::CodingCheckFailed);
         }
+
         // OPTIMIZATION: Proof of knowledge check = Dleq = Pairing check
         // If this passes, we know that the pairing check will pass, so don't do pairings
         for i in 0..self.n {
@@ -201,26 +119,29 @@ where E:PairingEngine,
     ///          Clone the vector before using
     pub fn aggregate(&self,
         indices: &[usize], // whose shares are we combining
-        pvec: &[PVSSVec<E>],
+        pvec: Vec<PVSSVec<E>>,
     ) -> (AggregatePVSS<E>, Vec<DecompositionProof<E>>) 
     {
         assert_eq!(indices.len(), pvec.len());
+
         // v_i = v1_i * v2_i * ... * vt+1_i
-        let combined_encs = (0..self.n).map(
-            |i| { (0..pvec.len()).fold(
-                E::G1Projective::zero(), 
-                |acc, j| {
-                    acc + pvec[j].encs[i].clone()
-                }
-            )
-        }).collect();
+        let combined_encs = (0..self.n)
+            .map(|i| { 
+                (0..pvec.len())
+                    .fold(E::G1Projective::zero(), 
+                    |acc, j| {
+                        acc + pvec[j].encs[i]
+                    }
+                )
+            })
+            .collect();
         
         // c_i = c1_i * c2_i * ... * ct+1_i
         let combined_comms = (0..self.n).map(
             |i| {(0..pvec.len()).fold(
                 E::G2Projective::zero(), 
                 |acc, j| {
-                    acc + pvec[j].comms[i].clone().into_projective()
+                    acc + pvec[j].comms[i].into_projective()
                 }
             ).into_affine()
         }).collect();
@@ -232,11 +153,15 @@ where E:PairingEngine,
         };
         // Decomposition proofs
         let agg_pi = (0..self.n).map(|i| {
-            let proofs = (0..pvec.len()).map(|j| pvec[j].proofs[i].clone()).collect();
-            let nencs = (0..pvec.len()).map(|j| pvec[j].encs[i].clone())
-            .collect();
-            let ncomms = (0..pvec.len()).map(|j| pvec[j].comms[i].clone())
-            .collect();
+            let proofs = (0..pvec.len())
+                .map(|j| pvec[j].proofs[i].clone())
+                .collect();
+            let nencs = (0..pvec.len())
+                .map(|j| pvec[j].encs[i])
+                .collect();
+            let ncomms = (0..pvec.len())
+                .map(|j| pvec[j].comms[i])
+                .collect();
             DecompositionProof {
                 idx: i,
                 indices: indices.to_vec(),
@@ -262,8 +187,14 @@ where E:PairingEngine,
                 continue;
             }
             // e(c_j, h) =? e(pk_j, v_j)
-            if E::pairing(agg_pvss.encs[id], self.optimizations.g2p)
-            != E::pairing(self.public_keys[id], agg_pvss.comms[id]) 
+            if !DbsContext::<E>::reduced_pairing_check_part(
+                agg_pvss.encs[id].into().into(),
+                self.optimizations.g2_prepared.clone(), 
+                self.optimizations.pub_keys_p[id].clone(),
+                (-agg_pvss.comms[id]).into()
+            )
+            // if E::pairing(agg_pvss.encs[id], self.optimizations.g2p)
+            // != E::pairing(self.public_keys[id], agg_pvss.comms[id]) 
             {
                 return Some(DbsError::PairingCheckFailed(id));
             }
@@ -279,16 +210,19 @@ where E:PairingEngine,
     ) -> Option<DbsError> 
     {
         assert!(agg_pi.indices.len() == agg_pi.comms.len());
+
         // Check if all the v multiply to v_i in agg_pvss
         let combined_v = (0..self.t+1).fold(
             E::G2Projective::zero(), 
             |acc,i| {
                 acc + agg_pi.comms[i].into_projective()
             }
-        ).into_affine();
-        if combined_v != agg_pvss.comms[self.origin as usize] {
+        );
+        // IntoProjective is cheaper than into_affine of the combined one
+        if combined_v != agg_pvss.comms[self.origin as usize].into_projective() {
             return Some(DbsError::CommitmentNotDecomposing);
         }
+
         // Check if all the c multiply to c_i in agg_pvss
         let combined_c = (0..self.t+1).fold(E::G1Projective::zero(), |acc,i| {
             acc + agg_pi.encs[i]
@@ -296,6 +230,7 @@ where E:PairingEngine,
         if combined_c != agg_pvss.encs[self.origin as usize] {
             return Some(DbsError::EncryptionNotDecomposing);
         }
+
         // Check DLEQ between vi and ci
         for id in 0..self.t+1 {
             if let Some(x) = Dleq::verify(
@@ -353,8 +288,8 @@ where E:PairingEngine,
         )
     }
     
-    // Reconstruct after obtaining t+1 valid decryptions
-    // Returns (B,S=e(B,h'))
+    /// Reconstruct after obtaining t+1 valid decryptions
+    /// Returns (B,S=e(B,h'))
     pub fn reconstruct(&self,
         decrypted_shares: &[Option<Share<E>>]
     ) -> Beacon<E>
@@ -384,7 +319,7 @@ where E:PairingEngine,
         .fold(E::G1Projective::zero(), |acc, x| acc + x);
         Beacon{
             beacon: E::pairing(secret, self.h2p), 
-            value: secret
+            value: secret,
         }
     }
 
@@ -422,7 +357,13 @@ where E:PairingEngine,
             )
         })
         .fold(E::G2Projective::zero(), |acc, x| acc + x);
-        E::pairing(b.value, self.h2p) == E::pairing(self.optimizations.g1p, hs)
+        DbsContext::<E>::reduced_pairing_check_part(
+            b.value.into().into(), 
+            self.optimizations.h2_prepared.clone(), 
+            self.optimizations.g1_prepared.clone(), 
+            (-hs.into()).into()
+        )
+        // E::pairing(b.value, self.h2p) == E::pairing(self.optimizations.g1p, hs)
     } 
 }
 
@@ -432,10 +373,11 @@ where E: PairingEngine
     let affine_pvss_comms: Vec<_> = (0..comms.len()).map(|i| {
         comms[i]
     }).collect();
+    
     // Coding check
     let codes:Vec<_> = (0..ctx.codewords.len()).map(|i| {
         ctx.codewords[i].into()
     }).collect();
-    let code_check = DbsContext::<E>::VBMultiScalarMul(&affine_pvss_comms, &codes);
+    let code_check = DbsContext::<E>::var_base_scalar_mul(&affine_pvss_comms, &codes);
     code_check == E::G2Projective::zero()
 }

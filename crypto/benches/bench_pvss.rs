@@ -1,6 +1,7 @@
 use ark_bls12_381::Bls12_381;
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, AffineCurve};
 use fnv::FnvHashMap as HashMap;
+use ark_std::UniformRand;
 
 use criterion::{
     criterion_group, criterion_main, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
@@ -131,7 +132,7 @@ pub fn pvss_aggregation(c: &mut Criterion) {
             let indices = indices.clone();
             b.iter(|| {
                 // Insert code that you want tested here
-                let _ = dbs_ctx[0].aggregate(&indices, &pvecs);
+                let _ = dbs_ctx[0].aggregate(&indices, pvecs.clone());
             });
         });
     }
@@ -172,7 +173,7 @@ pub fn pvss_pverify(c: &mut Criterion) {
         }
 
         let indices:Vec<_> = (0..t+1).map(|i| i).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -220,7 +221,7 @@ pub fn pvss_decomposition_verify(c: &mut Criterion) {
         }
 
         let indices:Vec<_> = (0..t+1).map(|i| i).collect();
-        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -268,7 +269,7 @@ pub fn pvss_decryption(c: &mut Criterion) {
         }
 
         let indices:Vec<_> = (0..t+1).map(|i| i).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
 
         // We are ready to start testing now
         group.throughput(Throughput::Bytes(n as u64));
@@ -316,7 +317,7 @@ pub fn pvss_verify_decryption(c: &mut Criterion) {
         }
 
         let indices:Vec<_> = (0..t+1).map(|i| i).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
         let mut decs = Vec::with_capacity(n);
         for i in 0..n {
             let dec = dbs_ctx[i].decrypt_share(&agg_pvss.encs[0], &dss_kpair[0], &mut rng);
@@ -371,7 +372,7 @@ pub fn pvss_reconstruction(c: &mut Criterion) {
         }
 
         let indices:Vec<_> = (0..t+1).map(|i| i).collect();
-        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, &pvecs);
+        let (agg_pvss, _agg_pi) = dbs_ctx[0].aggregate(&indices, pvecs);
         let mut decs = Vec::with_capacity(n);
         let mut dec_pi = Vec::with_capacity(n);
         for i in 0..n {

@@ -20,10 +20,11 @@ pub use keypairs::*;
 mod errors;
 pub use errors::*;
 
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, AffineCurve};
+use ark_std::UniformRand;
 use ark_poly::univariate::DensePolynomial;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 
 /// The scalar field of the pairing groups
 pub type Scalar<E> = <E as PairingEngine>::Fr;
@@ -62,6 +63,7 @@ pub fn rand_h2_generator<R, E>(rng: &mut R)
 }
 
 mod precomputes;
+mod pvss;
 
 mod test;
 

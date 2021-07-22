@@ -3,14 +3,12 @@ use crate::{DbsError, ark_serde::{
     canonical_serialize, 
 }};
 use crate::hash::ser_and_hash;
-pub use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
-pub use ark_ff::{Field, One, PrimeField, UniformRand, Zero, FromBytes};
-pub use ark_poly::{univariate::DensePolynomial, Polynomial as Poly, UVPolynomial};
+use ark_ec::ProjectiveCurve;
+use ark_ff::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-pub use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
-pub use std::{error::Error, fmt};
 use ark_ff::to_bytes;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -118,11 +116,12 @@ where
         if c != pi.c {
             return Some(DbsError::InvalidChallenge);
         }
+
         // Check if the response is correct
         if !dss_pk.verify(&hash, &pi.sig) {
             return Some(DbsError::InvalidSignature);
         }
-        // .add(x.mul(c))
+        
         if pi.a1 != g.mul(pi.r.into_repr()) + x.mul(c.into_repr()) {
             return Some(DbsError::LeftCheckFailed);
         }

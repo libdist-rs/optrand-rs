@@ -28,7 +28,12 @@ crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/li
 
 [dev-dependencies]
 criterion = "0.3"
+bencher = "0"
 
 [[bench]]
 name = "bench_pvss"
+harness = false
+
+[[bench]]
+name = "quick_test"
 harness = false

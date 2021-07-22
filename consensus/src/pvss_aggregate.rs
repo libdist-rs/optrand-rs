@@ -9,7 +9,7 @@ impl Context {
     /// In this function, we aggregate them and send it to all the nodes
     pub fn do_aggregation(&mut self) {
         let myid = self.config.id;
-        let (comb_pvss, comb_proof) = self.config.pvss_ctx.aggregate(&self.pvss_indices, &self.pvss_shares);
+        let (comb_pvss, comb_proof) = self.config.pvss_ctx.aggregate(&self.pvss_indices, self.pvss_shares.clone());
         for i in 0..self.num_nodes() {
             if i == myid {
                 continue;
