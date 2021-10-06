@@ -1,41 +1,60 @@
 use crypto::hash::Hash;
-use types::{Epoch, Height};
+use types::{Beacon, Certificate, Epoch, Height, PVSSVec, Proposal, ProtocolMsg, Replica};
 
 /// All optrand events are defined here
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub enum Event {
-    /// Start proposing, status round finished
-    /// This event will be triggered if the leader of an epoch needs to wait for status messages before proposing
-    Propose,
-    /// An epoch has ended, start a new epoch
-    /// This is an event notifying that we have finished an old epoch
-    /// This can occur either by committing in epoch r-1 or timer for epoch r-1 expires
-    EpochEnd(Epoch),
-    /// ProposeTimeout tells whether we have timed out for proposing
-    ProposeTimeout,
-    /// VoteTimeout to send or not to send synchronous vote messages on the block hash
-    VoteTimeout(Hash),
-    /// Sync commit event is triggered when sync cert is observed
-    SyncCommit(Height),
-    /// Responsive Commit Timeout; Do not commit blocks after this
-    ResponsiveCommitTimeout,
-    /// Sync Commit Timeout; Do not synchronously commit after this
-    SyncCommitTimeout,
-    /// Sync Timer
-    SyncTimer(Height), 
+    // Timers and Timeouts for epochs
+    // TODO: If clearing works, remove the Epoch in every tuple
+    TimeOut(TimeOutEvent),
+
+    // New message events
+    Message(Replica, NewMessage),
+
+    // Deliver events
+    Deliver(Deliver),
+
+    // Other meta events
+    Commit(),
+    Equivocation(),
 }
 
-impl Event {
-    pub fn to_string(&self) -> &'static str {
-        match self {
-            Event::Propose => "Propose",
-            Event::EpochEnd(_) => "Epoch Ended",
-            Event::ProposeTimeout => "Propose Timed out",
-            Event::VoteTimeout(_) => "Vote Timed out",
-            Event::ResponsiveCommitTimeout => "Responsive Commit timed out", 
-            Event::SyncCommit(_) => "Synchronously committing epoch",
-            Event::SyncCommitTimeout => "Sync Commit timed out",
-            Event::SyncTimer(_) => "Sync timer for 2D finished"
-        }
-    }
+#[derive(Debug)]
+pub enum Deliver {
+    NewProposeDeliver(),
+    NewResponsiveCertificateDeliver(),
+    NewSyncCertificateDeliver(),
+}
+
+#[derive(Debug)]
+pub enum NewMessage {
+    NewBeacon(Beacon, Epoch),
+    // NewCertificate(Certificate),
+    NewEpoch(Epoch),
+    NewStatus(),
+    NewPropose(Proposal),
+    NewResponsiveVote(),
+    NewSyncVote(),
+    NewResponsiveCertificate(),
+    NewSyncCertificate(),
+    NewAck(),
+    NewBeaconShare(),
+}
+
+#[derive(Debug)]
+pub enum TimeOutEvent {
+    /// When epoch_timer(e) = 0
+    EpochTimeOut(Epoch),
+    /// Start proposing at epoch_timer(e) = 9\Delta if we haven't already
+    /// This is used to wait for a proposal for the highest certificate
+    ProposeWaitTimeOut(Epoch),
+    /// When epoch timer(e) = 7\Delta
+    StopAcceptingProposals(Epoch),
+    /// Scheduled 2\Delta time since we received the first valid proposal
+    /// When this timesout, send <sync-vote_r, H(Bh), r>_pi to Lr
+    SyncVoteWaitTimeOut(Epoch),
+    /// When epoch timer(e) = 2\Delta
+    StopResponsiveCommit(Epoch),
+    /// When epoch timer(e) = 3\Delta
+    StopSyncCommit(Epoch),
 }
