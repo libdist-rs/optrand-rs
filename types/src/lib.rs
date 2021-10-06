@@ -1,6 +1,8 @@
 mod msg;
-use ark_bls12_381::Bls12_381;
+use error::Error;
 pub use msg::*;
+
+pub mod error;
 
 /// The height of the block
 pub type Height = usize;
@@ -9,6 +11,10 @@ pub type Replica = usize;
 /// The round or epoch
 pub type Epoch = usize;
 
+/// The first epoch is 1
+pub const START_EPOCH: Epoch = 0;
+
+use ark_bls12_381::Bls12_381;
 /// We will use Bls12_381 for OptRand
 /// Other users of the crypto library can change the pairing curve accordingly
 /// Available options: (Source: https://github.com/arkworks-rs/curves)
@@ -32,3 +38,8 @@ pub type Beacon = crypto::Beacon<E>;
 pub type DbsContext = crypto::DbsContext<E>;
 pub type Share = crypto::Share<E>;
 pub type Keypair = crypto::Keypair<E>;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[macro_use]
+extern crate derive_builder;

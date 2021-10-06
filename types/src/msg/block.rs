@@ -1,25 +1,40 @@
-use crypto::{hash::{Hash, EMPTY_HASH}};
+use crypto::{DSSPublicKey, hash::{Hash, EMPTY_HASH}};
+use fnv::FnvHashMap;
 use serde::{Deserialize, Serialize};
-use crate::{Height, AggregatePVSS};
-use types_upstream::WireReady;
+use crate::{AggregatePVSS, DbsContext, DecompositionProof, Height, Replica, Storage, error::Error};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Builder)]
+#[builder(build_fn(skip))]
 pub struct Block {
-    pub parent_hash: Hash,
-    pub height: Height,
-    /// We devaite from the main protocol here due to the optimization
-    /// By the time it is the node's turn to propose it would have already sent the (v,c) and the corresponding decomposition proof to all the nodes, so we include the hash of (v,c) here. The deliver will take care of delivering if it is not already delivered.
-    pub aggregate_pvss: AggregatePVSS,
+    parent_hash: Hash,
+    height: Height,
+    
+    aggregate_pvss: AggregatePVSS,
+    aggregate_proof: DecompositionProof,
 
     /// The hash of the block, do not serialize, init will update it automatically
     #[serde(skip)]
-    pub hash: Hash,
+    hash: Hash,
 }
 
 impl Block {
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let c: Block = bincode::deserialize(&bytes).expect("failed to decode the block");
-        return c.init();
+    pub const GENESIS_BLOCK: Block = Block {
+        hash: EMPTY_HASH,
+        height: 0,
+        parent_hash: EMPTY_HASH,
+        aggregate_pvss: AggregatePVSS{
+            comms: vec![],
+            encs: vec![],
+        },
+        aggregate_proof: DecompositionProof{
+            dleq_proof: vec![],
+            gs_vec: vec![],
+            indices: vec![],
+        },
+    };
+
+    pub fn genesis() -> Self {
+        Self::GENESIS_BLOCK
     }
 
     /// Compute the hash of the block, it does not set the block hash
@@ -27,26 +42,56 @@ impl Block {
         crypto::hash::ser_and_hash(self)
     }
 
-    /// Returns a new block with empty parent hash, height 0, empty hash, and an empty certificate
-    pub fn new(agg: AggregatePVSS) -> Self {
-        Block {
-            height: 0,
-            parent_hash: EMPTY_HASH,
-            hash: EMPTY_HASH,
-            aggregate_pvss: agg,
+    /// This will check for:
+    /// 1. A valid parent in the storage
+    pub fn is_valid(&self, storage: &Storage, dbs_ctx: &DbsContext, pk_map: &FnvHashMap<Replica, DSSPublicKey>) -> Result<(), String> {
+        let parent = storage.get_delivered_block_by_hash(&self.parent_hash);
+        if parent.is_none() {
+            return Err("Unknown parent".to_string());
         }
+        let parent = parent.unwrap();
+        if parent.height + 1 != self.height {
+            return Err("Invalid Height".to_string());
+        }
+
+        if let Some(err) = dbs_ctx.pverify(&self.aggregate_pvss) {
+            return Err(format!("Pverify failed with {:?}", err));
+        }
+
+        if let Some(err) = dbs_ctx.decomp_verify(
+            &self.aggregate_pvss, &self.aggregate_proof, pk_map) {
+            return Err(format!("Knowledge check failed with {:?}", err));
+        }
+        Ok(())
+    }
+
+    pub fn pvss(&self) -> &AggregatePVSS {
+        &self.aggregate_pvss
+    } 
+
+    pub fn proof(&self) -> &DecompositionProof {
+        &self.aggregate_proof
+    }
+
+    pub fn hash(&self) -> &Hash {
+        &self.hash
+    }
+
+    pub fn height(&self) -> Height {
+        self.height
     }
 }
 
-pub const GENESIS_BLOCK: Block = Block {
-    hash: EMPTY_HASH,
-    height: 0,
-    parent_hash: EMPTY_HASH,
-    aggregate_pvss: AggregatePVSS{
-        comms: vec![],
-        encs: vec![],
-    },
-};
+impl std::fmt::Debug for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Block")
+         .field("Height", &self.height)
+         .field("Parent Hash", &self.parent_hash)
+         .field("Knowledge contributions",&self.aggregate_proof.indices)
+         .finish()
+    }
+}
+
 
 impl types_upstream::WireReady for Block {
     /// After receiving a block from the network update the hash first
@@ -56,10 +101,34 @@ impl types_upstream::WireReady for Block {
     }
 
     fn from_bytes(data: &[u8]) -> Self {
-        Block::from_bytes(data)
+        let c: Block = bincode::deserialize(data)
+            .expect("failed to decode the block");
+        return c.init();
     }
 
     fn to_bytes(self: &Self) -> Vec<u8> {
         bincode::serialize(self).expect(format!("Failed to serialize {:?}", self).as_str())
+    }
+}
+
+impl BlockBuilder {
+    pub fn build(&self) -> Result<Block, Error> {
+        let mut block = Block {
+            aggregate_proof: Clone::clone(self.aggregate_proof
+                .as_ref()
+                .ok_or(Error::BuilderUnsetField("aggregate proof"))?),
+            parent_hash: Clone::clone(self.parent_hash
+                .as_ref()
+                .ok_or(Error::BuilderUnsetField("parent_hash"))?),
+            aggregate_pvss: Clone::clone(self.aggregate_pvss
+                .as_ref()
+                .ok_or(Error::BuilderUnsetField("aggregate pvss"))?),
+            height: Clone::clone(self.height
+                .as_ref()
+                .ok_or(Error::BuilderUnsetField("height"))?),
+            hash: EMPTY_HASH,
+        };
+        block.hash = block.compute_hash();
+        Ok(block)
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "types"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["hermitsage <dth.bht@gmail.com>"]
 edition = "2018"
 
@@ -14,6 +14,12 @@ bytes = "1.0"
 fnv="1"
 log = "0"
 ark-bls12-381 = { version = "0.3", default-features = true }
+derivative = "2"
+derive_builder = "0"
+tokio-util = "0"
+reed-solomon-erasure = { version = "4.0" }
+crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
+openssl = "0.10"
 
 [dependencies.types_upstream]
 package = "types"
