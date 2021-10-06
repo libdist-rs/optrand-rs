@@ -5,7 +5,6 @@ members = [
     "types",
     "config",
     "crypto",
-    "tools/genconfig",
     "consensus",
     "main",
 ]

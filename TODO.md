@@ -1,3 +1,5 @@
 # Missing Optimizations
 
-- Use IntoIterator to avoid moving vectors around
+- Implement Synchronous OptRand
+- Implement Optimistic OptRand
+- Implement Reconfiguration
