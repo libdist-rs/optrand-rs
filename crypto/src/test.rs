@@ -162,12 +162,13 @@ mod dleq_tests {
 
 #[cfg(test)]
 mod dbs_tests {
-    use crate::{DbsContext, Keypair, PublicKey, Scalar, SecretKey, std_rng};
+    use crate::{DbsContext, Keypair, PVSSVec, PublicKey, Scalar, SecretKey, std_rng};
     use ark_bls12_381::Bls12_381;
     use ark_std::{UniformRand, Zero};
     use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
     use ark_ff::PrimeField;
     use fnv::FnvHashMap as HashMap;
+    use serde::Serialize;
 
     type E = Bls12_381;
     
@@ -225,6 +226,44 @@ mod dbs_tests {
         assert_eq!(true, 
         DbsContext::<E>::reduced_pairing_check_part((g1).into(), g2x, g1x, (-g2).into())
         );
+    }
+
+    #[test]
+    fn codec_test() {
+        let mut rng = std_rng();
+        let n = 21;
+        let t = 10;
+        
+        let mut public_keys: Vec<PublicKey<E>> = Vec::new();
+        let mut secret_keys: Vec<SecretKey<E>> = Vec::new();
+        let mut dss_kpair = Vec::new();
+        let mut dss_pk = Vec::new();
+        for _i in 0..n {
+            let kpair = Keypair::<E>::generate_keypair(&mut rng);
+            secret_keys.push(kpair.0);
+            public_keys.push(kpair.1);
+            let dsskpair = crypto_lib::Keypair::generate_secp256k1();
+            dss_pk.push(dsskpair.public());
+            dss_kpair.push(dsskpair);
+        }
+        let h2 = <E as PairingEngine>::G2Affine::prime_subgroup_generator().mul(Scalar::<E>::rand(&mut rng).into_repr());
+
+        let dbs_ctx = DbsContext::<E>::new(&mut rng, h2,n, t, 0, public_keys, secret_keys[0]);
+        let idx = 0;
+        let pvec = 
+            dbs_ctx.generate_shares(&dss_kpair[idx], &mut rng);
+        
+        assert_eq!(None, dbs_ctx.verify_sharing(&pvec, &dss_pk[idx]));
+        assert_eq!(None, dbs_ctx.clone().verify_sharing(&pvec, &dss_pk[idx]));
+
+        let bytes = bincode::serialize(&pvec);
+        assert_eq!(true, bytes.is_ok());
+
+        let bytes = bytes.unwrap();
+        let pvec2: Result<PVSSVec<E>,_> = bincode::deserialize(&bytes);
+
+        assert_eq!(true, pvec2.is_ok());
+        assert_eq!(pvec, pvec2.unwrap());
     }
     
     #[test]

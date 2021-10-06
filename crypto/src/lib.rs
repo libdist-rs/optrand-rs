@@ -70,3 +70,6 @@ mod test;
 
 #[macro_use]
 extern crate derive_builder;
+
+pub type DSSPublicKey = crypto_lib::PublicKey;
+pub type DSSSecretKey = crypto_lib::Keypair;

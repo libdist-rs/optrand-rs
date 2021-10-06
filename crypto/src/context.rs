@@ -10,7 +10,7 @@ use ark_ec::{AffineCurve, PairingEngine};
 use ark_ff::PrimeField;
 use ark_std::One;
 
-#[derive(Debug,Clone,Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(bound(deserialize = "Precomputation<E>: Default"))]
 pub struct DbsContext<E> 
 where E: PairingEngine,

@@ -100,7 +100,7 @@ where E:PairingEngine,
         // OPTIMIZATION: Proof of knowledge check = Dleq = Pairing check
         // If this passes, we know that the pairing check will pass, so don't do pairings
         for i in 0..self.n {
-            if let Some(_) = Dleq::<E::G1Projective, E::G2Projective, E::Fr>::verify(
+            if let Some(x) = Dleq::<E::G1Projective, E::G2Projective, E::Fr>::verify(
                 &pvec.proofs[i], 
                 &self.public_keys[i], 
                 &pvec.encs[i], 
@@ -108,6 +108,7 @@ where E:PairingEngine,
                 &pvec.comms[i].into_projective(), 
                 dss_pk) 
             {
+                log::error!("Got error from dleq checker {:?}", x);
                 return Some(DbsError::DlogProofCheckFailed(i));
             }
         }

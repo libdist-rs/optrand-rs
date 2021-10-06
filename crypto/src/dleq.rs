@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use ark_ff::to_bytes;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DleqProof<G1, G2, S> 
 where 
     G1: CanonicalSerialize + CanonicalDeserialize,
@@ -40,7 +40,7 @@ where
     pub sig: Vec<u8>, 
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SingleDleqProof<G, S> 
 where 
     G: CanonicalSerialize + CanonicalDeserialize,
@@ -103,8 +103,8 @@ where
         let a2: G2 = h.mul(w.into_repr());
 
         let mut buf = Vec::new();
-        buf.append(&mut to_bytes!(a1).unwrap()); // a1
-        buf.append(&mut to_bytes!(a2).unwrap()); // a2
+        buf.append(&mut to_bytes!(a1.into_affine()).unwrap()); // a1
+        buf.append(&mut to_bytes!(a2.into_affine()).unwrap()); // a2
         buf.append(&mut to_bytes!(x.into_affine()).unwrap()); // x
         buf.append(&mut to_bytes!(y.into_affine()).unwrap()); // y
         let hash = ser_and_hash(&buf);
@@ -136,8 +136,8 @@ where
     {
         // Check if the challenge is correct
         let mut buf = Vec::new();
-        buf.append(&mut to_bytes!(pi.a1).unwrap());
-        buf.append(&mut to_bytes!(pi.a2).unwrap());
+        buf.append(&mut to_bytes!(pi.a1.into_affine()).unwrap());
+        buf.append(&mut to_bytes!(pi.a2.into_affine()).unwrap());
         buf.append(&mut to_bytes!(x.into_affine()).unwrap());
         buf.append(&mut to_bytes!(y.into_affine()).unwrap());
         let hash = ser_and_hash(&buf);
@@ -182,7 +182,7 @@ where
         let a: G = g.mul(w.into_repr());
 
         let mut buf = Vec::new();
-        buf.append(&mut to_bytes!(a).unwrap()); // a
+        buf.append(&mut to_bytes!(a.into_affine()).unwrap()); // a
         buf.append(&mut to_bytes!(x.into_affine()).unwrap()); // x
         let hash = ser_and_hash(&buf);
 
@@ -210,7 +210,7 @@ where
     {
         // Check if the challenge is correct
         let mut buf = Vec::new();
-        buf.append(&mut to_bytes!(pi.a).unwrap());
+        buf.append(&mut to_bytes!(pi.a.into_affine()).unwrap());
         buf.append(&mut to_bytes!(x.into_affine()).unwrap());
         let hash = ser_and_hash(&buf);
         

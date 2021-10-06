@@ -23,6 +23,7 @@ ark-bls12-381 = { version = "0.3", default-features = true }
 merkletree = "0.21"
 fnv = "1"
 derive_builder = "0"
+log = "0"
 
 crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
 

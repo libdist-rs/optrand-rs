@@ -8,7 +8,7 @@ use crate::{Commitment, DleqProof, SingleDleqProof, Encryptions, Scalar, Secret,
 use ark_ec::{AffineCurve, PairingEngine};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PVSSVec<E> 
 where E: PairingEngine,
 {
@@ -49,7 +49,7 @@ where E: PairingEngine,
     pub comms: Vec<Commitment<E>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DecompositionProof<E> 
 where E: PairingEngine,
 {
@@ -80,7 +80,7 @@ where E: PairingEngine,
     pub proof: DleqProof<E::G1Projective, E::G1Projective, Scalar<E>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Beacon<E> 
 where E: PairingEngine,
 {
