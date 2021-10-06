@@ -1,6 +1,7 @@
 use bytes::{Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 use types::ProtocolMsg;
+use types_upstream::WireReady;
 
 use std::{borrow::Borrow, io, sync::Arc};
 

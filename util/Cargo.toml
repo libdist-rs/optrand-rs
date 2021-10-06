@@ -18,3 +18,7 @@ bytes = "1.0"
 types = {package = "types", path = "../types"}
 tokio-util = {version="0.6", features= ["full"]}
 log = "*"
+
+[dependencies.types_upstream]
+package = "types"
+git="https://github.com/adithyabhatkajake/libchatter-rs"
