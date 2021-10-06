@@ -1,10 +1,9 @@
 use std::collections::VecDeque;
-
-use super::{is_valid_replica, ParseError};
-use crypto::{hash::Hash};
+use types::{Result, error::Error};
+use super::{is_valid_replica};
 use serde::{Deserialize, Serialize};
 use fnv::FnvHashMap as HashMap;
-use types::{Replica, AggregatePVSS, DbsContext};
+use types::{AggregatePVSS, DbsContext, PVSSVec, Replica};
 use crypto_lib::Algorithm;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -30,16 +29,13 @@ pub struct Node {
     pub pvss_ctx: DbsContext,
 
     // Beacon data structures
-    /// Rand_beacon_queue contains shares for already finished (committed) sharings
-    /// In the paper this is referred to as Q
-    /// Q[node id] is the actual queue
-    /// Initialized with n aggregate sharings
-    pub rand_beacon_queue: HashMap<Replica, VecDeque<Hash>>,
+
+    /// Initial beacon sharings
+    pub rand_beacon_queue: HashMap<Replica, VecDeque<AggregatePVSS>>,
+
     /// These are aggregate vectors received anytime between the last time a node was the leader till the next time the same node becomes a leader
     /// This is an optimization to be performed on another thread so that nodes can keep aggregating and verifying shares before it is their turn to be a leader, so that when it is their turn to propose all the nodes have already verified and are ready to vote
-    pub beacon_sharing_buffer: HashMap<Replica, VecDeque<Hash>>,
-
-    pub sharings: HashMap<Hash, AggregatePVSS>,
+    pub beacon_sharing_buffer: HashMap<Replica, VecDeque<PVSSVec>>,
 
     /// OpenSSL Certificate Details
     pub my_cert: Vec<u8>,
@@ -59,26 +55,25 @@ impl Node {
         Node {
             crypto_alg: crypto_lib::Algorithm::ED25519,
             delta: 50,
-            id: 0,
+            id: usize::default(),
             net_map: HashMap::default(),
-            num_faults: 0,
+            num_faults: usize::default(),
             num_nodes: 1,
             pk_map_internal: HashMap::default(),
             secret_key_bytes_internal: sk_bytes,
             rand_beacon_queue: HashMap::default(),
             beacon_sharing_buffer: HashMap::default(),
-            my_ip_addr: String::new(),
+            my_ip_addr: String::default(),
             pvss_ctx: dbs_ctx,
-            my_cert:Vec::new(),
-            root_cert:Vec::new(),
-            my_cert_key:Vec::new(),
-            sharings: HashMap::default(),
+            my_cert:Vec::default(),
+            root_cert:Vec::default(),
+            my_cert_key:Vec::default(),
         }
     }
 
     /// set public key map data (bytes) - Only to be used when generating configs
-    pub fn set_pk_map_data(&mut self, map: HashMap<Replica, Vec<u8>>) {
-        self.pk_map_internal = map;
+    pub fn set_pk_map_data(&mut self, mut map: HashMap<Replica, Vec<u8>>) {
+        std::mem::swap(&mut self.pk_map_internal, &mut map);
     }
 
     /// Init intializes all the caches such as my_ip, etc
@@ -90,7 +85,7 @@ impl Node {
         self
     }
 
-    /// Returns the secret key (KEYPAIR) for this config
+    /// Returns a copy of the secret key (KEYPAIR) in this config
     pub fn get_secret_key(&self) -> crypto_lib::Keypair {
         let sk = 
         crypto_lib::ed25519::Keypair::decode(&mut self.secret_key_bytes_internal.clone())
@@ -118,47 +113,44 @@ impl Node {
     /// Checks if the config is valid
     ///
     /// Called when loading a fresh config or checking when generating a new config
-    pub fn validate(&self) -> Result<(), ParseError> {
+    pub fn validate(&self) -> Result<()> {
         // a valid config has n > 2f or 2f < n
         if 2 * self.num_faults >= self.num_nodes {
-            return Err(ParseError::IncorrectFaults(self.num_faults, self.num_nodes));
+            return Err(Error::ParseIncorrectFaults(self.num_faults, self.num_nodes));
         }
         // I hope there are n IP addresses
         if self.net_map.len() != self.num_nodes {
-            return Err(ParseError::InvalidMapLen(
-                self.num_nodes,
-                self.net_map.len(),
-            ));
+            return Err(Error::ParseInvalidMapLen(self.num_nodes,self.net_map.len()));
         }
         // We check if every element is a valid id, i.e., < n
         // Since we are using a hash_map if there are n valid elements then there must be n unique elements
         for repl in &self.net_map {
             if !is_valid_replica(*repl.0, self.num_nodes) {
-                return Err(ParseError::InvalidMapEntry(*repl.0));
+                return Err(Error::ParseInvalidMapEntry(*repl.0));
             }
         }
         match self.crypto_alg {
             Algorithm::ED25519 => {
                 for repl in &self.pk_map_internal {
                     if !is_valid_replica(*repl.0, self.num_nodes) {
-                        return Err(ParseError::InvalidMapEntry(*repl.0));
+                        return Err(Error::ParseInvalidMapEntry(*repl.0));
                     }
                     if repl.1.len() != crypto_lib::ED25519_PK_SIZE {
-                        return Err(ParseError::InvalidPkSize(repl.1.len()));
+                        return Err(Error::ParseInvalidPkSize(repl.1.len()));
                     }
                 }
                 if self.secret_key_bytes_internal.len() != crypto_lib::ED25519_PVT_SIZE {
-                    return Err(ParseError::InvalidSkSize(self.secret_key_bytes_internal.len()));
+                    return Err(Error::ParseInvalidSkSize(self.secret_key_bytes_internal.len()));
                 }
             }
             // Intentionally disabled for performance
             Algorithm::SECP256K1 => {
                 // Because unimplemented
-                return Err(ParseError::Unimplemented("SECP256k1"));
+                return Err(Error::ParseUnimplemented("SECP256k1"));
             }
             Algorithm::RSA => {
                 // Because unimplemented
-                return Err(ParseError::Unimplemented("RSA"));
+                return Err(Error::ParseUnimplemented("RSA"));
             }
         }
         Ok(())

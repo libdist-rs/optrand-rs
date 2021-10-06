@@ -54,4 +54,36 @@ impl Node {
         }
         log::debug!("Talking to servers: {:?}", self.net_map);
     }
+
+    pub fn write_file(&self, out: OutputType, basename: &str) {
+        match out {
+            OutputType::JSON => {
+                let filename = format!("{}/nodes-{}.json", basename, self.id);
+                write_json(filename, self);
+            }
+            OutputType::Binary => {
+                let filename = format!("{}/nodes-{}.dat", basename, self.id);
+                write_bin(filename, self);
+            }
+            OutputType::TOML => {
+                let filename = format!("{}/nodes-{}.toml", basename, self.id);
+                write_toml(filename, self);
+            }
+            OutputType::Yaml => {
+                let filename = format!("{}/nodes-{}.yml", basename, self.id);
+                write_yaml(filename, self);
+            }
+        }
+
+    }
+}
+
+use util::io::*;
+
+#[derive(Debug, Clone, Copy)]
+pub enum OutputType {
+    JSON,
+    TOML,
+    Binary,
+    Yaml,
 }
