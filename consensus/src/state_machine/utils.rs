@@ -33,7 +33,7 @@ impl OptRandStateMachine {
     
     pub(crate) fn update_highest_cert(&mut self, v: Vote, c: Certificate<Vote>) -> Result<()> {
         let b = {
-            let p = self.storage.prop_from_hash(v.proposal_hash()).ok_or(format!("Proposal not found when trying to update the highest certificate"))?;
+            let (p, _) = self.storage.prop_from_hash(v.proposal_hash()).ok_or(format!("Proposal not found when trying to update the highest certificate"))?;
             self.storage.get_delivered_block_by_hash(p.block().hash()).ok_or(format!("Block not found in storage when trying to update the highest certified block"))?
         };
         self.highest_certificate = (c, b, v);

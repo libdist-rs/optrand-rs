@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{Beacon, BeaconShare, Block, Certificate, DeliverData, DirectProposal, Epoch, PVSSVec, Proof, Proposal, Replica, SyncCertProposal, Vote};
+use crate::{Beacon, BeaconShare, Block, Certificate, DeliverData, DirectProposal, Epoch, EquivData, PVSSVec, Proof, Proposal, Replica, SyncCertProposal, Vote};
 use types_upstream::WireReady;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +46,8 @@ pub enum ProtocolMsg {
     /// Sent when a node reconstructs the beacon for that epoch
     BeaconReady(Epoch, Beacon),
 
+    EquivocationProposal(EquivData<DirectProposal>),
+    EquivocationSyncCert(EquivData<SyncCertProposal>),
 
     // Parsing errors
     /// An invalid message
@@ -65,7 +67,7 @@ impl WireReady for ProtocolMsg {
             ProtocolMsg::SyncVote(..) => self,
             ProtocolMsg::SyncCert(..) => self,
             ProtocolMsg::DeliverSyncCert(..) => self,
-            _ => todo!("Implement state transition for protocolmsg"),
+            _ => todo!("Implement state transition for protocolmsg :{:?}", self),
         }
     }
 

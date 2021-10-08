@@ -42,6 +42,7 @@ impl RoundContext {
     pub fn reset(&mut self, num_nodes: usize) {
         std::mem::take(self);
         self.propose_deliver_share.resize(num_nodes, None);
+        self.sync_cert_deliver_share.resize(num_nodes, None);
     }
 
     pub fn add_round_share(&mut self, from: Replica, pvec: PVSSVec) {

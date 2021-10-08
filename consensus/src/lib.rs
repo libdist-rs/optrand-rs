@@ -33,7 +33,7 @@ mod state_machine;
 pub use state_machine::*;
 
 mod ev_queue;
-pub use ev_queue::*;
+pub(crate) use ev_queue::*;
 
 mod reactor;
 pub use reactor::*;

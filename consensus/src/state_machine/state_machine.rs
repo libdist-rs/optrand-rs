@@ -1,7 +1,7 @@
 use config::Node;
 use crypto::{rand::prelude::StdRng, std_rng};
 use crypto_lib::{Keypair, PublicKey};
-use types::{Beacon, Block, Certificate, DirectProposal, Epoch, MTAccumulator, MTAccumulatorBuilder, Proposal, ProposalData, Replica, START_EPOCH, SignatureBuilder, Storage, SyncCertProposal, Vote};
+use types::{Beacon, Block, Certificate, DirectProposal, Epoch, MTAccumulator, MTAccumulatorBuilder, Proposal, ProposalData, Replica, START_EPOCH, SignatureBuilder, Storage, SyncCertProposal, Type, Vote, threshold};
 use fnv::FnvHashMap as HashMap;
 
 use crate::RoundContext;
@@ -47,13 +47,14 @@ impl OptRandStateMachine {
                 .expect("Failed to commit the genesis block");
             (t, gen_arc)
         };
+        let f = threshold(&Type::Responsive, config.num_nodes);
         let mut prop_acc_builder = MTAccumulatorBuilder::new();
-        prop_acc_builder.set_f(config.num_faults);
+        prop_acc_builder.set_f(f);
         prop_acc_builder.set_n(config.num_nodes);
         let mut sync_cert_acc_builder = MTAccumulatorBuilder::new();
         sync_cert_acc_builder
             .set_n(config.num_nodes)
-            .set_f(config.num_faults);
+            .set_f(f);
         Self {
             config,
             epoch: START_EPOCH,

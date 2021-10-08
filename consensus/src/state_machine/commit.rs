@@ -10,7 +10,7 @@ impl OptRandStateMachine {
         msg_buf: &mut MsgBuf,
     ) -> Result<()> {
         // Get the proposal
-        let block = if let Some(x) = self.storage.prop_from_hash(&prop_hash) {
+        let block = if let Some((x, _)) = self.storage.prop_from_hash(&prop_hash) {
             self.storage.get_delivered_block_by_hash(x.block().hash())
         } else {
             return Err(

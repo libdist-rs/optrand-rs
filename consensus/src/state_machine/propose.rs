@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{Event, EventQueue, MsgBuf, NewMessage, OptRandStateMachine, OutMsg, TimeOutEvent};
-use types::{BlockBuilder, Certificate, DirectProposal, Epoch, Proof, ProofBuilder, Proposal, ProposalBuilder, ProposalData, ProtocolMsg, Replica, Result, error::Error};
+use types::{BlockBuilder, Certificate, DirectProposal, Epoch, Proof, ProofBuilder, Proposal, ProposalBuilder, ProposalData, ProtocolMsg, Replica, Result, Vote, error::Error};
 use types_upstream::WireReady;
 
 impl OptRandStateMachine {
@@ -53,8 +53,13 @@ impl OptRandStateMachine {
         };
         // Multicast the proposal
         let msg = self.new_proposal_msg(prop.clone(), proof.clone())?;
-        ev_queue.add_event(Event::Message(self.config.id, NewMessage::Propose(prop, proof)));
         msg_buf.push_back(msg);
+        ev_queue.add_event(
+            Event::Message(
+                self.config.id, 
+                NewMessage::Propose(prop, proof)
+            )
+        );
         Ok(())
     }
 
@@ -104,11 +109,12 @@ impl OptRandStateMachine {
             &self.pk_map)?;
         
         // Check for equivocations
-        if self.storage.is_equivocation_prop(self.epoch, &prop.hash()) {
+        if self.storage.is_equivocation_prop(self.epoch, proof.acc()) {
             log::warn!("Proposal equivocation detected for {}", prop.epoch());
-            return Err(
-                Error::EquivocationDetected(self.epoch)
-            );
+            todo!();
+            // return Err(
+            //     Error::EquivocationDetected(self.epoch)
+            // );
         }
 
 
@@ -130,7 +136,7 @@ impl OptRandStateMachine {
 
         // Is the certificate valid?
         if prop.block().height() != 1 {
-            if prop.highest_cert().len() != self.config.num_faults+1 {
+            if prop.highest_cert().len() != prop.data.highest_cert_data.num_sigs(self.config.num_nodes) {
                 return Err(Error::Generic(
                     format!("Expected {} sigs in the certificate. Got {}", self.config.num_faults + 1, prop.highest_cert().len())
                 ));
@@ -168,7 +174,8 @@ impl OptRandStateMachine {
 
         // Update storage
         let block = prop.block().clone();
-        self.storage.add_proposal(prop);
+        let (acc, sign) = proof.unpack();
+        self.storage.add_proposal(prop, acc, sign)?;
         self.storage.add_delivered_block(block);
 
         // Update round context

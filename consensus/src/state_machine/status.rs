@@ -35,8 +35,8 @@ impl OptRandStateMachine {
         // Prevent duplicated vertification everytime
         if vote.epoch() != START_EPOCH {
             cert.buffered_is_valid(vote, &self.pk_map, &mut self.storage)?;
-            if cert.len() != self.config.num_faults + 1 {
-                log::warn!("Invalid num of sigs: Expected: {}, Got {}", self.config.num_faults+1,cert.len());
+            if cert.len() != vote.num_sigs(self.config.num_nodes) {
+                log::warn!("Invalid num of sigs: Expected: {}, Got {}", vote.num_sigs(self.config.num_nodes),cert.len());
                 return Err(
                     format!("Status verification").into()
                 );

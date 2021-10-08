@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use types::{DeliverData, Proof, ProtocolMsg, Replica, Result, SyncCertProposal, error::Error};
+use types::{DeliverData, Proof, ProtocolMsg, Replica, Result, SyncCertProposal, Type, Vote, error::Error, threshold};
 use crate::{MsgBuf, OptRandStateMachine};
 
 impl OptRandStateMachine {
@@ -41,23 +41,23 @@ impl OptRandStateMachine {
     /// Check whether the delivered message is correct
     pub(crate) fn verify_sync_cert_deliver_share(&self, 
         sender: Replica,
-        from: Replica, 
+        sh_for: Replica, 
         sh: &DeliverData<SyncCertProposal>
     ) -> Result<()> {
         // Bypass all checks if we received the shares directly
         if self.rnd_ctx.received_proposal_directly {
             return Ok(());
         }
-        if from != sender && from != self.config.id {
+        if sh_for != sender && sh_for != self.config.id {
             return Err(Error::Generic(
-                format!("Got a deliver share for {} from {}", from, sender)
+                format!("Got a deliver share for {} from {}", sh_for, sender)
             ));
         }
         // Verify the codeword
         self.sync_cert_acc_builder.verify_witness(&sh.acc, 
             &sh.wit, 
             &sh.shard, 
-            sender)
+            sh_for)
     }
 
     pub(crate) fn on_verified_sync_cert_deliver(&mut self, 
@@ -74,7 +74,7 @@ impl OptRandStateMachine {
         // Try reconstruction
         let prop = if let Some(x) = self.rnd_ctx.cleave_sync_cert_from_deliver(
             self.config.num_nodes, 
-            self.config.num_nodes/4 + 1
+            threshold(&Type::Responsive, self.config.num_nodes)
         ) {
             if let Err(e) = x {
                 return Err(e);

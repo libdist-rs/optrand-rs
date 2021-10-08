@@ -1,4 +1,4 @@
-use crate::{EventQueue, MsgBuf, OptRandStateMachine, events::{Deliver, Event, NewMessage, TimeOutEvent}};
+use crate::{EventQueue, MsgBuf, OptRandStateMachine, events::{Event, TimeOutEvent}};
 use types::Result;
 
 impl OptRandStateMachine {

@@ -1,6 +1,6 @@
 use crypto::hash::{EMPTY_HASH, Hash};
 use serde::{Serialize, Deserialize};
-use crate::Epoch;
+use crate::{Epoch, threshold};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,10 +34,7 @@ impl Vote {
     }
 
     pub const fn num_sigs(&self, num_nodes: usize) -> usize {
-        match self.tp {
-            Type::Sync => num_nodes/2 + 1,
-            Type::Responsive => 3*num_nodes/4 + 1,
-        }
+        threshold(&self.tp, num_nodes)
     }
 
     pub fn proposal_hash(&self) -> &Hash {

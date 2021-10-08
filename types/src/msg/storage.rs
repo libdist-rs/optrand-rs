@@ -1,6 +1,6 @@
 use fnv::{FnvHashMap as HashMap, FnvHashSet};
 use super::Block;
-use crate::{Certificate, DeliverData, DirectProposal, Epoch, Height, PVSSVec, Replica, Result, SyncCertProposal, Vote};
+use crate::{Certificate, DeliverData, DirectProposal, Epoch, Height, MTAccumulator, PVSSVec, Proof, Replica, Result, SyncCertProposal, Vote, ProofBuilder};
 use crypto::hash::{Hash, ser_and_hash};
 use std::{collections::VecDeque, sync::Arc};
 use crate::AggregatePVSS;
@@ -20,7 +20,7 @@ pub struct Storage {
 
 
     /// A mapping of the proposal to its hash
-    prop_hash_map: HashMap<Hash, Arc<DirectProposal>>,
+    prop_hash_map: HashMap<Hash, (Arc<DirectProposal>, Arc<Proof<DirectProposal>>)>,
     /// Sync Vote Bank
     sync_vote_map: HashMap<Epoch, (Vote, Certificate<Vote>)>,
 
@@ -31,10 +31,16 @@ pub struct Storage {
 
     /// Did we detect an equivocation for a proposal in this epoch
     equivocation_map: FnvHashSet<Epoch>,
-    // /// Used to check for proposal equivocation
-    // prop_epoch_map: HashMap<Epoch, DeliverData<DirectProposal>>,
+    /// Used to check for proposal equivocation
+    prop_epoch_map: HashMap<Epoch, (
+        MTAccumulator<DirectProposal>, 
+        Certificate<(Epoch, MTAccumulator<DirectProposal>)>
+    )>,
     // /// Used to check for sync cert equivocation
-    // sync_cert_epoch_map: HashMap<Epoch, Hash>,
+    sync_cert_epoch_map: HashMap<Epoch, (
+        MTAccumulator<SyncCertProposal>, 
+        Certificate<(Epoch, MTAccumulator<SyncCertProposal>)>
+    )>,
 
     /// Store Aggregate PVSS for every replica
     /// Here, we add an Aggregate PVSS in epoch e for replica i, to be used the next time replica i becomes a leader again
@@ -105,15 +111,39 @@ impl Storage {
     }
 
     /// Ensure that equivocations are checked for, before adding the proposal
-    pub fn add_proposal(&mut self, p: DirectProposal) -> Arc<DirectProposal> {
+    pub fn add_proposal(&mut self, 
+        p: DirectProposal, 
+        acc: MTAccumulator<DirectProposal>,
+        sign: Certificate<(Epoch, MTAccumulator<DirectProposal>)>,
+    ) -> Result<()> {
         let p_arc = Arc::new(p);
+        let proof_arc = {
+            let mut proof = ProofBuilder::default();
+            let proof = proof.acc(acc.clone())
+                .sign(sign.clone())
+                .build()
+                .map_err(|e| 
+                    format!("Failed to build proof with error: {}", e)
+                )?;
+            Arc::new(proof)
+        };
         let hash = ser_and_hash(p_arc.as_ref());
-        self.prop_hash_map.insert(hash, p_arc.clone());
-        // self.prop_epoch_map.insert(p_arc.epoch(), hash);
-        p_arc
+        self.prop_hash_map.insert(hash, (p_arc.clone(), proof_arc));
+        self.prop_epoch_map.insert(p_arc.epoch(), (acc, sign));
+        Ok(())
     }
 
-    pub fn prop_from_hash(&self, hash: &Hash) -> Option<Arc<DirectProposal>> {
+    /// Add prop data from Deliver data
+    /// Used to prevent equivocation via Deliver
+    pub fn add_prop_data_from_deliver(&mut self,
+        e: Epoch,
+        acc: MTAccumulator<DirectProposal>,
+        sign: Certificate<(Epoch, MTAccumulator<DirectProposal>)>,
+    ) {
+        self.prop_epoch_map.insert(e, (acc, sign));
+    }
+
+    pub fn prop_from_hash(&self, hash: &Hash) -> Option<(Arc<DirectProposal>, Arc<Proof<DirectProposal>>)> {
         self.prop_hash_map.get(hash).map(|v| v.clone())
     }
 
@@ -127,31 +157,27 @@ impl Storage {
 
     /// Checks if we received an equivocating proposal
     /// Check the validity of the certificate first
-    pub fn is_equivocation_prop(&self, e: Epoch, p_hash: &Hash) -> bool {
-        log::warn!("Unimplemented proposal equivocation check");
-        // if let Some(x) = self.prop_epoch_map.get(&e) {
-        //     if x != p_hash {
-        //         return true;
-        //     }
-        // }
+    pub fn is_equivocation_prop(&self, 
+        e: Epoch, 
+        acc: &MTAccumulator<DirectProposal>,
+    ) -> bool {
+        if let Some((acc_known, _)) = self.prop_epoch_map.get(&e) {
+            return acc.hash != acc_known.hash;
+        }
         return false;
     }
 
     /// Checks if we received an equivocating proposal
     /// Check the validity of the certificate first
     pub fn is_equivocation_sync_cert(&self, 
-        e: Epoch, sync_cert_prop_hash: &Hash, 
-        prop_hash: &Hash
+        e: Epoch, 
+        acc: &MTAccumulator<SyncCertProposal>,
     ) -> bool {
         // No equivocating sync_certs were found
-        log::warn!("Unimplemented sync cert equivocation check");
-        // if let Some(x) = self.sync_cert_epoch_map.get(&e) {
-        //     if x == sync_cert_prop_hash {
-        //         return false;
-        //     }
-        // }
-        // Check if this cert talks about a different proposal
-        self.is_equivocation_prop(e, prop_hash)
+        if let Some((acc_known, _)) = self.sync_cert_epoch_map.get(&e) {
+            return acc.hash != acc_known.hash;
+        }
+        return false;
     }
 
     /// Check if either proposal or sync_cert equivocations were found

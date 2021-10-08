@@ -11,6 +11,7 @@ impl OptRandStateMachine {
         ev_queue: &mut EventQueue, 
         msg_buf: &mut MsgBuf
     ) -> Result<()> {
+        log::info!("Proposing sync cert");
         // Create deliverable sync cert message
         let prop = {
             let mut prop_builder = ProposalBuilder::default();
@@ -78,6 +79,25 @@ impl OptRandStateMachine {
             &self.sync_cert_acc_builder, 
             &self.pk_map)?;
 
+        // Check for equivocating sync cert
+        if self.storage.is_equivocation_sync_cert(self.epoch, proof.acc()) {
+            log::warn!("Proposal equivocation detected for {}", prop.epoch());
+            todo!();
+            // return Err(
+            //     Error::EquivocationDetected(self.epoch)
+            // );
+        }
+
+        // Check for equivocating proposal in sync cert
+        if let Some((_, proof_orig)) = self.storage.prop_from_hash(prop.data.vote.proposal_hash()) {
+            if self.storage.is_equivocation_prop(self.epoch, proof_orig.acc()) {
+                return Err(Error::EquivocationDetected(self.epoch));
+            }
+        } else {
+            return Err(
+                Error::Generic(format!("Delivered a sync cert for an unknown proposal hash"))
+            );
+        }
         Ok(())
     }
 
@@ -120,7 +140,7 @@ impl OptRandStateMachine {
     ) -> Result<OutMsg> 
     {
         Ok((
-            self.config.num_nodes,
+            self.config.num_nodes, // SendAll
             Arc::new(ProtocolMsg::SyncCert(prop, proof)),
         ))
     }

@@ -27,6 +27,7 @@ pub struct Proof<T> {
     sign: Certificate<(Epoch, MTAccumulator<T>)>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Builder)]
 pub struct EquivData<T> {
     /// The accumulator
     acc: [MTAccumulator<T>; 2],
@@ -47,6 +48,10 @@ impl<T> Proof<T> {
 
     pub fn sign(&self) -> &Certificate<(Epoch, MTAccumulator<T>)> {
         &self.sign
+    }
+
+    pub fn unpack(self) -> (MTAccumulator<T>, Certificate<(Epoch, MTAccumulator<T>)>) {
+        (self.acc, self.sign)
     }
 }
 

@@ -46,3 +46,43 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[macro_use]
 extern crate derive_builder;
+
+pub const fn threshold(tp: &Type, num_nodes: usize) -> usize {
+    let is_odd = num_nodes & 1 == 1;
+    match tp {
+        Type::Sync if is_odd => (num_nodes+1)/2,
+        Type::Sync => (num_nodes)/2,
+        Type::Responsive => if num_nodes%4 == 0 {
+            ((num_nodes-1)/4)+1
+        } else {
+            (num_nodes/4)+1
+        }
+    }
+}
+
+
+#[test]
+fn test_sigs() {
+    let sync_vote = Vote::default();
+    assert_eq!(sync_vote.num_sigs(3), 2);
+    assert_eq!(sync_vote.num_sigs(4), 2);
+    assert_eq!(sync_vote.num_sigs(5), 3);
+    let resp_vote = {
+        let mut vote = VoteBuilder::default();
+        vote
+            .tp(Type::Responsive)
+            .epoch(0)
+            .prop_hash(crypto::hash::EMPTY_HASH)
+            .build()
+            .expect("Failed to build a vote")
+    };
+    assert_eq!(resp_vote.num_sigs(3), 1);
+    assert_eq!(resp_vote.num_sigs(4), 1);
+    assert_eq!(resp_vote.num_sigs(5), 2);
+    assert_eq!(resp_vote.num_sigs(6), 2);
+    assert_eq!(resp_vote.num_sigs(7), 2);
+    assert_eq!(resp_vote.num_sigs(8), 2);
+    assert_eq!(resp_vote.num_sigs(9), 3);
+}
+
+

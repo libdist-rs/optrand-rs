@@ -11,20 +11,10 @@ pub(crate) enum Event {
     // New message events
     Message(Replica, NewMessage),
 
-    // Deliver events
-    Deliver(Deliver),
-
     // Other meta events
     Commit(),
     Equivocation(),
     FastForwardEpoch(Epoch),
-}
-
-#[derive(Debug, Clone)]
-pub enum Deliver {
-    NewProposeDeliver(),
-    NewResponsiveCertificateDeliver(),
-    NewSyncCertificateDeliver(),
 }
 
 #[derive(Debug, Clone)]

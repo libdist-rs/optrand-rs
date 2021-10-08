@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use types::{Certificate, Epoch, Proof, ProtocolMsg, Replica, Result, Vote, VoteBuilder, error::Error};
+use types::{Certificate, Epoch, Proof, ProtocolMsg, Replica, Result, Type, Vote, VoteBuilder, error::Error, threshold};
 use crate::{Event, EventQueue, MsgBuf, NewMessage, OptRandStateMachine, OutMsg};
 use crypto::hash::Hash;
 
@@ -79,7 +79,7 @@ impl OptRandStateMachine {
         }
 
         // Try cleaving
-        if let Some((v, c)) = self.storage.cleave_sync_cert(self.epoch, self.config.num_faults + 1) {
+        if let Some((v, c)) = self.storage.cleave_sync_cert(self.epoch, threshold(&Type::Sync, self.config.num_nodes)) {
             log::info!("Successfully created a sync certificate for {}", v.epoch());
             // If successful update highest certificate
             self.update_highest_cert(v.clone(), c.clone())?;
