@@ -36,8 +36,11 @@ pub type Decryption = crypto::Decryption<E>;
 pub type PVSSVec = crypto::PVSSVec<E>;
 pub type Beacon = crypto::Beacon<E>;
 pub type DbsContext = crypto::DbsContext<E>;
-pub type Share = crypto::Share<E>;
+pub type BeaconShare = crypto::Share<E>;
 pub type Keypair = crypto::Keypair<E>;
+
+pub type DirectProposal = Proposal<ProposalData>;
+pub type SyncCertProposal = Proposal<SyncCertData>;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

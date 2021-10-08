@@ -12,8 +12,8 @@ pub use signature::*;
 // mod sync;
 // pub use sync::*;
 
-// mod vote;
-// pub use vote::*;
+mod vote;
+pub use vote::*;
 
 // mod ack;
 // pub use ack::*;

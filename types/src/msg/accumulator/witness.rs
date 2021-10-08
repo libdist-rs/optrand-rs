@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
-
+use serde::{Serialize, Deserialize};
 use crypto::hash::{self};
 
 use crate::{Codeword, MTAccumulatorBuilder, Replica, error::Error, get_size};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Witness<T> {
     start: Vec<u8>,
     chain: Vec<(Vec<u8>, Vec<u8>)>,

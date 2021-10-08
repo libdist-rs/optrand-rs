@@ -15,6 +15,10 @@ pub struct Signature<T> {
 impl<T> Signature<T> 
 where T:Serialize,
 {
+    pub fn get_sig(&self) -> Vec<u8> {
+        self.sig.clone()
+    }
+
     pub fn is_valid(&self, data: &T, pk: &DSSPublicKey) -> Result<(), String> {
         let hash = ser_and_hash(data);
         self.is_valid_with_hash(&hash, pk)

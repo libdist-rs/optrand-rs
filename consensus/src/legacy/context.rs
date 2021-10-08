@@ -18,7 +18,7 @@ pub struct Context {
     pub(crate) pub_key_map: HashMap<Replica, crypto_lib::PublicKey>,
 
     /// Network interface
-    pub(crate) net_send: UnboundedSender<(Replica, Arc<ProtocolMsg>)>,
+    pub(crate) net_send: UnboundedSender<OutMsg>,
 
     /// Storage for all the data
     pub(crate) storage: Storage,

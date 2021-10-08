@@ -1,31 +1,58 @@
-use super::Block;
-use crate::{Certificate, Codeword, Epoch, MTAccumulator, Witness};
+use super::{Block, accumulator};
+use crate::{Certificate, Codeword, DbsContext, DirectProposal, Epoch, MTAccumulator, MTAccumulatorBuilder, ProposalData, Replica, Storage, SyncCertData, SyncCertProposal, Vote, Witness, error::Error};
+use crypto::{DSSPublicKey, hash::{Hash, ser_and_hash}};
+use fnv::FnvHashMap;
 use types_upstream::WireReady;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[derive(Builder)]
-pub struct Proposal {
-    /// The block in the proposal
-    epoch: Epoch,
-    block: Block, 
-    highest_cert: Certificate<Proposal>,
+pub struct Proposal<T> {
+    pub data: T,
 
     #[serde(skip)]
-    codewords: Option<Vec<Codeword<Proposal>>>,
+    codewords: Option<Vec<Codeword<Proposal<T>>>>,
     #[serde(skip)]
-    witnesses: Option<Vec<Witness<Proposal>>>,
+    witnesses: Option<Vec<Witness<Proposal<T>>>>,
+    #[serde(skip)]
+    #[builder(setter(skip))]
+    hash: Hash,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Proof {
+#[derive(Debug, Serialize, Deserialize, Clone, Builder)]
+pub struct Proof<T> {
     /// The accumulator for the proposal
-    acc: MTAccumulator<Proposal>,
+    acc: MTAccumulator<T>,
     /// A signature on the accumulator
-    sign: Certificate<MTAccumulator<Proposal>>,
+    sign: Certificate<MTAccumulator<T>>,
 }
 
-impl WireReady for Proposal {
+pub struct EquivData<T> {
+    /// The accumulator
+    acc: MTAccumulator<T>,
+    /// The signature
+    sign: Certificate<MTAccumulator<T>>,
+    /// The data on which the equivocation was detected
+    data: T,
+}
+
+impl<T> Proof<T> {
+    pub fn acc(&self) -> &MTAccumulator<T> {
+        &self.acc
+    }
+
+    pub fn sign(&self) -> &Certificate<MTAccumulator<T>> {
+        &self.sign
+    }
+}
+
+impl WireReady for DirectProposal {
+    fn init(mut self) -> Self {
+        self.data.block = self.data.block.init();
+        self.hash = ser_and_hash(&self);
+        self
+    }
+
     fn from_bytes(data: &[u8]) -> Self {
         bincode::deserialize(data).expect("failed to deserialize proposal")
     }
@@ -33,14 +60,25 @@ impl WireReady for Proposal {
     fn to_bytes(&self) -> Vec<u8> {
         bincode::serialize(self).expect("Failed to serialize proposal")
     }
+}
 
-    fn init(mut self) -> Self {
-        self.block = self.block.init();
+impl WireReady for Proposal<SyncCertData> {
+    fn init(self) -> Self {
         self
+    }
+
+    fn from_bytes(data: &[u8]) -> Self {
+        bincode::deserialize(data).expect("failed to deserialize proposal")
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        bincode::serialize(self).expect("Failed to serialize proposal")
     }
 }
 
-impl WireReady for Proof {
+impl<T> WireReady for Proof<T> 
+where T:Clone + Send + Sync + DeserializeOwned + Serialize,
+{
     fn from_bytes(data: &[u8]) -> Self {
         bincode::deserialize(data).expect("failed to deserialize proposal")
     }
@@ -54,8 +92,132 @@ impl WireReady for Proof {
     }
 }
 
-impl Proposal {
+impl DirectProposal {
     pub fn epoch(&self) -> Epoch {
-        self.epoch
+        self.data.epoch
+    }
+
+    pub fn block(&self) -> &Block {
+        &self.data.block
+    }
+
+    pub fn highest_cert(&self) -> &Certificate<Vote> {
+        &self.data.highest_cert
+    }
+
+    pub fn vote(&self) -> &Vote {
+        &self.data.highest_cert_data
+    }
+
+    pub fn hash(&self) -> Hash {
+        self.hash
+    }
+
+    /// Check whether 
+    /// 1. The block in the proposal is valid
+    /// 2. 
+    pub fn is_valid(&self, 
+        from: Replica,
+        proof: &Proof<DirectProposal>,
+        storage: &mut Storage,
+        pvss_ctx: &DbsContext,
+        prop_acc_builder: &MTAccumulatorBuilder<Self>,
+        pk_map: &FnvHashMap<Replica, DSSPublicKey>,
+    ) -> Result<(), Error> {
+        // Is the block valid on its own?
+        self.block()
+            .is_valid(&storage, 
+                pvss_ctx, 
+                &pk_map,
+            )?; 
+
+        // Is the accumulator valid?
+        prop_acc_builder.check(self, &proof.acc)?;
+        
+        // Is the accumulator signed correctly?
+        if !proof.sign.is_vote() {
+            return Err(Error::Generic("Invalid # Sigs in the proposal proof".to_string()));
+        }
+        if !proof.sign.sigs.contains_key(&from) {
+            return Err(Error::Generic(format!("Accumulator in the proposal is not signed by the leader")));
+        }
+        proof.sign.is_valid(&proof.acc, pk_map)
+    }
+}
+
+impl SyncCertProposal {
+    /// Check whether 
+    /// 1. The block in the proposal is valid
+    /// 2. 
+    pub fn is_valid(&self, 
+        from: Replica,
+        proof: &Proof<Self>,
+        storage: &mut Storage,
+        sync_cert_acc_builder: &MTAccumulatorBuilder<Self>,
+        pk_map: &FnvHashMap<Replica, DSSPublicKey>,
+    ) -> Result<(), Error> {
+        // Are all the signatures valid
+        self.data.cert.buffered_is_valid(&self.data.vote, pk_map, storage)?;
+
+        // Is the accumulator valid?
+        sync_cert_acc_builder.check(self, &proof.acc)?;
+        
+        // Is the accumulator signed correctly?
+        if !proof.sign.is_vote() {
+            return Err(Error::Generic("Invalid # Sigs in the proposal proof".to_string()));
+        }
+        if !proof.sign.sigs.contains_key(&from) {
+            return Err(Error::Generic(format!("Accumulator in the proposal is not signed by the leader")));
+        }
+        proof.sign.is_valid(&proof.acc, pk_map)
+    }
+    
+    pub fn epoch(&self) -> Epoch {
+        self.data.vote.epoch()
+    }
+
+    pub fn hash(&self) -> Hash {
+        self.hash
+    }
+}
+
+impl<T> Proposal<T> 
+where T:Serialize + Clone
+{
+
+    pub fn get_codewords(&mut self, prop_acc_builder: &MTAccumulatorBuilder<Self>) -> Result<Vec<Codeword<Self>>, Error> {
+        if let None = self.codewords {
+            let bytes = bincode::serialize(self)?;
+            let n = prop_acc_builder.n.ok_or(Error::BuilderUnsetField("n"))?;
+            let f = prop_acc_builder.f.ok_or(Error::BuilderUnsetField("f"))?;
+            self.codewords = Some(accumulator::generate_codewords(&bytes, n, f)?);
+        }
+        Ok(
+            self.codewords
+                .as_ref()
+                .ok_or(
+                    format!("Expected codewords to be cached")
+                )?
+                .clone()
+        )
+    }
+
+    pub fn get_witnesses(&mut self, prop_acc_builder: &MTAccumulatorBuilder<Self>) -> Result<Vec<Witness<Self>>, Error> {
+        if let None = self.codewords {
+            let bytes = bincode::serialize(self)?;
+            let n = prop_acc_builder.n.ok_or(Error::BuilderUnsetField("n"))?;
+            let f = prop_acc_builder.f.ok_or(Error::BuilderUnsetField("f"))?;
+            self.codewords = Some(accumulator::generate_codewords(&bytes, n, f)?);
+        }
+        if let None = self.witnesses {
+            let tree = MTAccumulatorBuilder::get_tree_from_codewords(
+                self.codewords.as_ref()
+                .ok_or(
+                    "We just cached codewords, so this is unreachable".to_string()
+                )?
+            )?;
+            self.witnesses = Some(prop_acc_builder.get_all_witness(&tree)?);
+        }
+        Ok(self.witnesses.as_ref().clone().ok_or("Expected witnesses to be cached".to_string())?.clone())
     }
 }

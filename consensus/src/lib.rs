@@ -2,6 +2,8 @@
 // pub(crate) use context::*;
 
 mod events;
+use std::sync::Arc;
+
 pub use events::*;
 
 // mod reactor;
@@ -35,3 +37,6 @@ pub use ev_queue::*;
 
 mod reactor;
 pub use reactor::*;
+use types::{ProtocolMsg, Replica};
+
+pub type OutMsg = (Replica, Arc<ProtocolMsg>);

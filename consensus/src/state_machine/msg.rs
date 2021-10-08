@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use crate::OptRandStateMachine;
-use types::{ProtocolMsg, Result, error::Error};
+use types::{Certificate, PVSSVec, Proposal, ProtocolMsg, Replica, Result, error::Error};
 
 impl OptRandStateMachine {
     pub fn build_beacon_ready(&self) -> Result<ProtocolMsg> {

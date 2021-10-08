@@ -1,7 +1,9 @@
+use std::borrow::BorrowMut;
+
 use crypto::{DSSPublicKey, DSSSecretKey, hash::{EMPTY_HASH, Hash, ser_and_hash}};
 use fnv::FnvHashMap;
 use serde::{Serialize, Deserialize};
-use crate::{Replica, Signature, error::Error};
+use crate::{Replica, Signature, Storage, error::Error};
 
 /// A certificate contains several signatures on a message
 /// A vote is a special case of certificate with one vote
@@ -10,7 +12,7 @@ use crate::{Replica, Signature, error::Error};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Certificate<T> {
     hash: Hash,
-    sigs: FnvHashMap<Replica, Signature<T>>,
+    pub sigs: FnvHashMap<Replica, Signature<T>>,
 }
 
 impl<T> std::default::Default for Certificate<T> {
@@ -25,6 +27,11 @@ impl<T> std::default::Default for Certificate<T> {
 impl<T> Certificate<T> 
 where T: Serialize,
 {
+
+    pub fn get_hash(&self) -> &Hash {
+        &self.hash
+    }
+
     /// Converts a signature into a certificate
     pub fn from_signature_and_msg_hash(
         id: Replica, 
@@ -67,7 +74,10 @@ where T: Serialize,
     /// `is_valid` checks if:
     /// 1. The certificate is for this message
     /// 2. Every vote is vaild against this message
-    pub fn is_valid(&self, msg: &T, pks: &FnvHashMap<Replica, DSSPublicKey>) -> Result<(), Error> {
+    pub fn is_valid(&self, 
+        msg: &T, 
+        pks: &FnvHashMap<Replica, DSSPublicKey>
+    ) -> Result<(), Error> {
         if self.hash != ser_and_hash(msg) {
             return Err(Error::CertificateHashMismatch);
         }
@@ -78,6 +88,30 @@ where T: Serialize,
             let pk = pks.get(from)
                 .ok_or(Error::CertificateUnknownOrigin(*from))?;
             sig.is_valid_with_hash(&self.hash, pk)?;
+        }
+        Ok(())
+    }
+    
+    /// Buffered `is_valid` checks if the signature is on this message, and that every signature is valid while buffering the correct signatures
+    pub fn buffered_is_valid(&self, 
+        msg: &T, 
+        pks: &FnvHashMap<Replica, DSSPublicKey>,
+        storage: &mut Storage,
+    ) -> Result<(), Error> {
+        if self.hash != ser_and_hash(msg) {
+            return Err(Error::CertificateHashMismatch);
+        }
+        if pks.len() < self.len() {
+            return Err(Error::CertificateTooManySigs);
+        }
+        for (from, sig) in &self.sigs {
+            if storage.is_already_verified(*from, &self.hash) {
+                continue;
+            }
+            let pk = pks.get(from)
+                .ok_or(Error::CertificateUnknownOrigin(*from))?;
+            sig.is_valid_with_hash(&self.hash, pk)?;
+            storage.add_verified_sig(*from, self.hash, sig.get_sig());
         }
         Ok(())
     }

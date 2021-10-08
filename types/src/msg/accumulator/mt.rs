@@ -3,12 +3,14 @@ use crypto::hash;
 use serde::{Deserialize, Serialize};
 use crate::{Codeword, Replica, Witness, error::Error, generate_codewords};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MTAccumulator<T> {
     /// The merkle tree root
-    hash: Vec<u8>,
+    pub(crate) hash: Vec<u8>,
     _x: PhantomData<T>,
 }
+
+impl<T> Eq for MTAccumulator<T> where T: PartialEq {}
 
 impl<T> std::fmt::Display for MTAccumulator<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,7 +24,7 @@ impl<T> std::fmt::Display for MTAccumulator<T> {
 
 pub struct MTAccumulatorBuilder<T> {
     pub(crate) n: Option<usize>,
-    f: Option<usize>,
+    pub(crate) f: Option<usize>,
     _x: PhantomData<T>,
 }
 

@@ -4,7 +4,7 @@ use futures::{Stream, StreamExt};
 use tokio_util::time::DelayQueue;
 use crate::events::{Event, TimeOutEvent};
 
-pub struct EventQueue {
+pub(crate) struct EventQueue {
     time_queue: DelayQueue<TimeOutEvent>,
     ev_queue: VecDeque<Event>,
 }
@@ -26,6 +26,7 @@ impl Stream for EventQueue {
 }
 
 impl EventQueue {
+    /// The size parameter defines the initial sizes for the event queue and the timer queue
     pub fn with_capacity(size: usize) -> Self {
         Self {
             time_queue: DelayQueue::with_capacity(size),
@@ -39,5 +40,9 @@ impl EventQueue {
 
     pub fn add_timeout(&mut self, tev: TimeOutEvent, timeout: Duration) {
         self.time_queue.insert(tev, timeout);
+    }
+
+    pub fn events_queue(&mut self) -> &mut VecDeque<Event> {
+        &mut self.ev_queue
     }
 }

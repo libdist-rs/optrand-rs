@@ -71,8 +71,6 @@ pub struct Decryption<E>
 where E: PairingEngine,
 {
     /// The decrypted share
-    #[serde(serialize_with = "canonical_serialize")]
-    #[serde(deserialize_with = "canonical_deserialize")]
     pub dec: Share<E>,
     /// The proof that this share was decrypted correctly
     #[serde(bound(serialize = "DleqProof<E::G1Projective, E::G2Projective, Scalar<E>>: Serialize"))]

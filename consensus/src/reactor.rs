@@ -1,25 +1,20 @@
 use config::Node;
-use crypto::std_rng;
-use crate::{EventQueue, OptRandStateMachine, events::{Event, TimeOutEvent}};
-use std::time::Duration;
-use std::sync::Arc;
-use tokio::sync::{mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender, channel}, oneshot};
+use crate::{EventQueue, MsgBuf, OptRandStateMachine, OutMsg, TimeOutEvent};
+use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender};
 use types::{PVSSVec, ProtocolMsg, Replica, START_EPOCH};
-use tokio_util::time::DelayQueue;
 use tokio_stream::StreamExt;
 
 pub type VerifyReceiver = Sender<(Replica, PVSSVec, tokio::sync::oneshot::Sender<(Replica, PVSSVec)>)>;
 
 pub async fn reactor(
     config: Node,
-    net_send: UnboundedSender<(Replica, Arc<ProtocolMsg>)>,
+    net_send: UnboundedSender<OutMsg>,
     mut net_recv: UnboundedReceiver<(Replica, ProtocolMsg)>,
 ) 
 {
     // let (sh_out, verify_in) = spawn_share_thread(&config);
-    let mut not_stop = true;
+    // let mut not_stop = true;
 
-    let delta = config.delta;
     let mut osm = OptRandStateMachine::new(config);
 
     // A little time to boot everything up
@@ -27,8 +22,9 @@ pub async fn reactor(
     // We wait for the first epoch (START_EPOCH) to timeout empty, and from then on start the protocol at epoch START_EPOCH+1 with the next leader and so on.
     ev_queue.add_timeout(
         TimeOutEvent::EpochTimeOut(START_EPOCH), 
-        Duration::from_millis(11*delta)
+        osm.x_delta(11)
     );
+    let mut msg_buf = MsgBuf::new();
 
     loop {
         tokio::select! {
@@ -39,12 +35,14 @@ pub async fn reactor(
                 }
                 let (sender, msg) = pmsg_opt.unwrap();
                 log::debug!("Got a new message from {}", sender);
-                // log::debug!("Got {}", msg.hex_display());
-                unimplemented!()
+                log::debug!("Got {:x?}", msg);
+                if let Err(e) = osm.on_new_msg(sender, msg, &mut ev_queue, &mut msg_buf) {
+                    log::error!("Consensus error: {}", e);
+                }
             }
             phase = ev_queue.next() => {
                 let ev = phase.unwrap();
-                if let Err(e) = osm.on_new_event(ev, &mut ev_queue) {
+                if let Err(e) = osm.on_new_event(ev, &mut ev_queue, &mut msg_buf) {
                     log::error!("Consensus error: {}", e);
                 }
             }
@@ -61,9 +59,11 @@ pub async fn reactor(
                 // cx.ev_queue.push_back(Event::NewVerifiedShare(sender, share));
             // }
         }
-        // while let Some(x) = cx.ev_queue.pop_front() {
-        //     cx.handle_event(x, &mut delay_queue).await;
-        // }
+        while let Some(x) = msg_buf.pop_front() {
+            if let Err(e) = net_send.send(x) {
+                log::error!("Error sending message: {}", e);
+            }
+        }
     }
 }
 

@@ -44,6 +44,9 @@ impl Block {
 
     /// This will check for:
     /// 1. A valid parent in the storage
+    /// 2. The height is correct
+    /// 3. The aggregate pvss is correct
+    /// 4. The decomposition proof is correct
     pub fn is_valid(&self, storage: &Storage, dbs_ctx: &DbsContext, pk_map: &FnvHashMap<Replica, DSSPublicKey>) -> Result<(), String> {
         let parent = storage.get_delivered_block_by_hash(&self.parent_hash);
         if parent.is_none() {

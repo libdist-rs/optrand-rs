@@ -25,6 +25,7 @@ use ark_std::UniformRand;
 use ark_poly::univariate::DensePolynomial;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use serde::{Serialize, Deserialize};
 
 /// The scalar field of the pairing groups
 pub type Scalar<E> = <E as PairingEngine>::Fr;
@@ -39,8 +40,25 @@ pub type GT<E> = <E as PairingEngine>::Fqk;
 /// Also the beacon
 pub type Secret<E> = GT<E>;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct BShare<E: PairingEngine> { 
+    #[serde(serialize_with = "canonical_serialize")]
+    #[serde(deserialize_with = "canonical_deserialize")]
+    pub inner: <E as PairingEngine>::G1Projective 
+}
+
+impl<E> BShare<E> 
+where E: PairingEngine,
+{
+    pub fn new(inner: <E as PairingEngine>::G1Projective) -> Self {
+        Self {
+            inner,
+        }
+    }
+}
+
 /// The Share type
-pub type Share<E> = <E as PairingEngine>::G1Projective;
+pub type Share<E> = BShare<E>;
 pub type Commitment<E> = <E as PairingEngine>::G2Affine;
 pub type CommitmentP<E> = <E as PairingEngine>::G2Projective;
 pub type SecretKey<E> = Scalar<E>;

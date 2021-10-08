@@ -1,4 +1,4 @@
-use crate::{Commitment, DbsContext, DbsError, Dleq, Encryptions, Polynomial, Scalar, Share, SingleDleq, precomputes::Precomputation};
+use crate::{BShare, Commitment, DbsContext, DbsError, Dleq, Encryptions, Polynomial, Scalar, Share, SingleDleq, precomputes::Precomputation};
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Polynomial as Poly, UVPolynomial};
@@ -269,7 +269,7 @@ where E:PairingEngine,
             dss_sk, 
             rng);
         Decryption{
-            dec: d,
+            dec: BShare::new(d),
             proof: pi,
         }
     }
@@ -286,7 +286,7 @@ where E:PairingEngine,
             &dec.proof, 
             &self.optimizations.g1p, 
             &self.public_keys[origin], 
-            &dec.dec, 
+            &dec.dec.inner, 
             e, 
             &dss_pk
         )
@@ -307,7 +307,7 @@ where E:PairingEngine,
         let secret = valid_share_indices
         .iter()
         .map(|&(i, _scalar_i)| {
-            decrypted_shares[i].unwrap().mul(
+            decrypted_shares[i].unwrap().inner.mul(
                 valid_share_indices
                     .iter()
                     .map(|&(j, scalar_j)| {

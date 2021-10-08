@@ -1,7 +1,7 @@
 use crypto_lib::error::SigningError;
 use reed_solomon_erasure::Error as RSError;
 use openssl::error::ErrorStack;
-use crate::Replica;
+use crate::{Epoch, Replica};
 
 #[derive(Debug)]
 pub enum Error {
@@ -24,6 +24,7 @@ pub enum Error {
     ParseInvalidSkSize(usize),
     ParseUnimplemented(&'static str),
     Generic(String),
+    EquivocationDetected(Epoch),
 }
 
 impl From<SigningError> for Error {
@@ -77,6 +78,7 @@ impl std::fmt::Display for Error {
             Self::ParseInvalidSkSize(s) => write!(f, "Invalid SK size - Got {}", s)?,
             Self::ParseUnimplemented(unimp) => write!(f, "Unimplemented algorithm: {}", unimp)?,
             Self::DERConversionError(e) => write!(f, "DER Error: {}", e)?,
+            Self::EquivocationDetected(e) => write!(f, "Equivocation detected in {}", e)?,
             Self::Generic(s) => write!(f, "Generic Error: {}", s)?,
         }
         Ok(())
@@ -104,6 +106,7 @@ impl std::error::Error for Error {
             Self::ParseInvalidSkSize(..) => "Parse Invalid SK Size",
             Self::ParseUnimplemented(..) => "Parse Unimplemented Algorithm",
             Self::DERConversionError(..) => "DER Error",
+            Self::EquivocationDetected(..) => "Equivocation Error",
             Self::Generic(..) => "Generic Error",
         }
     }

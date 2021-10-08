@@ -1,19 +1,50 @@
 use serde::{Deserialize, Serialize};
-use crate::{Beacon, Epoch, Proof, Proposal};
+use crate::{Beacon, BeaconShare, Block, Certificate, DeliverData, DirectProposal, Epoch, PVSSVec, Proof, Proposal, Replica, SyncCertProposal, Vote};
 use types_upstream::WireReady;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProposalData {
+    /// The block in the proposal
+    pub epoch: Epoch,
+    pub block: Block, 
+    pub highest_cert_data: Vote,
+    pub highest_cert: Certificate<Vote>,
+}
+
+impl std::default::Default for ProposalData {
+    fn default() -> Self {
+        Self {
+            block: Block::genesis(),
+            ..Default::default()
+        }
+    }
+}
+ 
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+pub struct SyncCertData {
+    pub vote: Vote,
+    pub cert: Certificate<Vote>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ProtocolMsg {
-    /// Network level beacon message (Epoch, Beacon)
-    /// Sent when someone reconstructs the beacon for that epoch
-    BeaconReady(Epoch, Beacon),
-
     /// Status Message consists of the highest ranked certificate and a PVSS tuple
-    // Status(Certificate, PVSSVec),
+    Status(Vote, Certificate<Vote>, PVSSVec),
 
     /// RawPropose contains the actual proposal with Accumulator information
-    RawPropose(Proposal, Proof),
-    Propose(Proposal, Proof),
+    RawPropose(DirectProposal, Proof<DirectProposal>),
+    Propose(DirectProposal, Proof<DirectProposal>),
+    DeliverPropose(Replica, DeliverData<DirectProposal>),
+
+    SyncVote(Vote, Certificate<Vote>),
+
+    SyncCert(SyncCertProposal, Proof<SyncCertProposal>),
+    DeliverSyncCert(Replica, DeliverData<SyncCertProposal>),
+
+    /// Beacon Share
+    BeaconShare(Epoch, BeaconShare),
+    /// Sent when a node reconstructs the beacon for that epoch
+    BeaconReady(Epoch, Beacon),
 
 
     // Parsing errors
@@ -27,7 +58,13 @@ impl WireReady for ProtocolMsg {
             ProtocolMsg::RawPropose(prop, proof) => {
                 ProtocolMsg::Propose(prop.init(), proof.init())
             },
-            ProtocolMsg::BeaconReady(..) => self,
+            ProtocolMsg::Status(..) | 
+            ProtocolMsg::BeaconReady(..) | 
+            ProtocolMsg::DeliverPropose(..) => self,
+            ProtocolMsg::SyncVote(.., c) if !c.is_vote() => ProtocolMsg::InvalidMessage,
+            ProtocolMsg::SyncVote(..) => self,
+            ProtocolMsg::SyncCert(..) => self,
+            ProtocolMsg::DeliverSyncCert(..) => self,
             _ => todo!("Implement state transition for protocolmsg"),
         }
     }
