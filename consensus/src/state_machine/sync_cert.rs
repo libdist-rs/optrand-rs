@@ -27,7 +27,7 @@ impl OptRandStateMachine {
         };
         let proof = {
             let (acc, _codes, _wits) = self.sync_cert_acc_builder.build(&prop)?;
-            let sign = Certificate::new_cert(&acc,self.config.id, &self.sk)?;
+            let sign = Certificate::new_cert(&(self.epoch, acc.clone()),self.config.id, &self.sk)?;
             let mut proof = ProofBuilder::default(); 
             proof
                 .acc(acc)
@@ -72,6 +72,7 @@ impl OptRandStateMachine {
 
         // Check signatures
         prop.is_valid(from,
+            self.epoch,
             proof, 
             &mut self.storage, 
             &self.sync_cert_acc_builder, 

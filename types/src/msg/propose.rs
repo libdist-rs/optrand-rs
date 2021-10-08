@@ -24,16 +24,20 @@ pub struct Proof<T> {
     /// The accumulator for the proposal
     acc: MTAccumulator<T>,
     /// A signature on the accumulator
-    sign: Certificate<MTAccumulator<T>>,
+    sign: Certificate<(Epoch, MTAccumulator<T>)>,
 }
 
 pub struct EquivData<T> {
     /// The accumulator
-    acc: MTAccumulator<T>,
-    /// The signature
-    sign: Certificate<MTAccumulator<T>>,
+    acc: [MTAccumulator<T>; 2],
+    /// The first signature
+    sign: [Certificate<(Epoch, MTAccumulator<T>)>; 2],
     /// The data on which the equivocation was detected
-    data: T,
+    epoch: Epoch,
+}
+
+impl<T> EquivData<T> {
+    pub const NUM_EQUIV: usize = 2;
 }
 
 impl<T> Proof<T> {
@@ -41,7 +45,7 @@ impl<T> Proof<T> {
         &self.acc
     }
 
-    pub fn sign(&self) -> &Certificate<MTAccumulator<T>> {
+    pub fn sign(&self) -> &Certificate<(Epoch, MTAccumulator<T>)> {
         &self.sign
     }
 }
@@ -118,6 +122,7 @@ impl DirectProposal {
     /// 2. 
     pub fn is_valid(&self, 
         from: Replica,
+        e: Epoch,
         proof: &Proof<DirectProposal>,
         storage: &mut Storage,
         pvss_ctx: &DbsContext,
@@ -141,7 +146,7 @@ impl DirectProposal {
         if !proof.sign.sigs.contains_key(&from) {
             return Err(Error::Generic(format!("Accumulator in the proposal is not signed by the leader")));
         }
-        proof.sign.is_valid(&proof.acc, pk_map)
+        proof.sign.is_valid(&(e,proof.acc.clone()), pk_map)
     }
 }
 
@@ -151,6 +156,7 @@ impl SyncCertProposal {
     /// 2. 
     pub fn is_valid(&self, 
         from: Replica,
+        e: Epoch,
         proof: &Proof<Self>,
         storage: &mut Storage,
         sync_cert_acc_builder: &MTAccumulatorBuilder<Self>,
@@ -169,7 +175,7 @@ impl SyncCertProposal {
         if !proof.sign.sigs.contains_key(&from) {
             return Err(Error::Generic(format!("Accumulator in the proposal is not signed by the leader")));
         }
-        proof.sign.is_valid(&proof.acc, pk_map)
+        proof.sign.is_valid(&(e,proof.acc.clone()), pk_map)
     }
     
     pub fn epoch(&self) -> Epoch {
