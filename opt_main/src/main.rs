@@ -1,5 +1,4 @@
 use std::error::Error;
-use consensus::spawn_leader_thread;
 use types::{ProtocolMsg, ReconfigurationMsg};
 
 mod io;
@@ -13,7 +12,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     log::debug!(target:"app","Successfully decoded the config file");
 
     let num_cpus = num_cpus::get();
-    let num_opt_cpu = num_cpus - NUM_CORE_CPU - NUM_NET_CPU;
 
     let net_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -38,6 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         config.my_cert.clone(), 
         config.my_cert_key.clone()
     );
+
     let (cli_send, cli_recv) = 
     net_rt.block_on(
         cli_net.client_setup(
@@ -46,6 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             util::codec::reconfig::Codec::new(),
         )
     );
+
     // Start the protocol network
     let (net_send, net_recv) = 
     net_rt.block_on(
@@ -55,24 +55,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         util::codec::proto::Codec::new(),
     ));
 
-    let opt_rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .worker_threads(num_opt_cpu)
-        .build()?;
-    let ctx = config.pvss_ctx.clone();
-    let ch = opt_rt.block_on(async 
-        { 
-            spawn_leader_thread(
-                config.num_faults, 
-                ctx, 
-                config.get_public_key_map()
-            )
-        }
-    );
-
     let core_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .worker_threads(NUM_CORE_CPU)
+        .worker_threads(num_cpus - NUM_NET_CPU)
         .build()?;
 
     // Start the optrand reactor on the second thread
@@ -81,7 +66,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         config,
         net_send,
         net_recv,
-        ch,
         cli_send,
         cli_recv
     ));

@@ -1,8 +1,8 @@
 [package]
 name = "consensus"
 version = "0.1.0"
-authors = ["hermitsage <dth.bht@gmail.com>"]
-edition = "2018"
+authors = ["Adithya Bhat <dth.bht@gmail.com>"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,18 +12,19 @@ types = { package = "types", path="../types"}
 crypto = { package = "crypto", path="../crypto"}
 util = { package = "util", path="../util"}
 
-tokio = { version = "1.0", features = ["full"] }
-futures = "0.3"
-bytes = "1.0"
-tokio-util = "0.6"
+tokio = { version = "1", features = ["full"] }
+futures = "0"
+bytes = "1"
+tokio-util = { version = "0.7", features = [ "codec", "time"]}
 tokio-stream = "0.1"
 async-stream = "0.3"
 log = "*"
-serde = { version = "1.0.126", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 num-traits = "0.2"
 fnv = "1"
 linked-hash-map = "0"
 chrono = "0"
+static_assertions = "1"
 
 [dependencies.crypto_lib]
 package = "crypto"
@@ -35,7 +36,7 @@ git="https://github.com/adithyabhatkajake/libchatter-rs"
 
 [dev-dependencies]
 criterion = "0.3"
-simple_logger = "1"
+simple_logger = "2"
 
 [features]
 profile = []

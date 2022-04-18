@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate static_assertions;
+
 mod msg;
 use error::Error;
 pub use msg::*;
@@ -13,6 +16,8 @@ pub type Epoch = usize;
 
 /// The first epoch is 1
 pub const START_EPOCH: Epoch = 1;
+// START_EPOCH must be greater than 0 as the first epoch will be used to synchronize
+const_assert!(START_EPOCH > 0);
 
 /// We will use Bls12_381 for OptRand
 /// Other users of the crypto library can change the pairing curve accordingly

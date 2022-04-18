@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use config::Node;
-use crate::{*, events::Event};
+use log::{warn, debug, error};
+use crate::*;
 use super::OptRandStateMachine;
 use tokio::sync::{mpsc::{Sender, UnboundedReceiver, UnboundedSender}, oneshot};
-use types::{PVSSVec, ProtocolMsg, ReconfigurationMsg, Replica, START_EPOCH};
+use types::{PVSSVec, ProtocolMsg, ReconfigurationMsg, Replica};
 use tokio_stream::StreamExt;
 
 pub type VerifyReceiver = Sender<(Replica, PVSSVec, oneshot::Sender<(Replica, PVSSVec)>)>;
@@ -13,126 +12,34 @@ pub async fn reactor(
     config: Node,
     net_send: UnboundedSender<OutMsg>,
     mut net_recv: UnboundedReceiver<(Replica, ProtocolMsg)>,
-    ch: (ThreadSender, ThreadReceiver),
     _cli_send: UnboundedSender<CliOutMsg>,
     mut cli_recv: UnboundedReceiver<ReconfigurationMsg>,
 ) 
 {
-    let delta = config.delta;
-    let id = config.id;
-    let sync_msg = (config.num_nodes, Arc::new(ProtocolMsg::Sync));
-    let mut osm = OptRandStateMachine::new(config, ch);
+    let mut osm = OptRandStateMachine::new(config, net_send);
+    osm.start_sync();
 
-    // A little time to boot everything up
-    let mut ev_queue = EventQueue::with_capacity(100_000, net_send, delta);
-    
-    if id == START_EPOCH {
-        ev_queue.send_msg(sync_msg);
-        // A little time to boot everything up
-        tokio::time::sleep(
-            tokio::time::Duration::from_millis(delta)
-        ).await;
-        // We wait for the first epoch (START_EPOCH) to timeout empty, and from then on start the protocol at epoch START_EPOCH+1 with the next leader and so on.
-        ev_queue.add_event(
-            Event::TimeOut(
-                    TimeOutEvent::EpochTimeOut(START_EPOCH)
-                )
-        );
-    }
     loop {
         tokio::select! {
             pmsg_opt = net_recv.recv() => {
                 if let None = pmsg_opt {
-                    log::warn!("Failed to decode message from the network: {:?}", pmsg_opt);
+                    warn!("Failed to decode message from the network: {:?}", pmsg_opt);
                     break;
                 }
                 let (sender, msg) = pmsg_opt.unwrap();
-                log::debug!("Got a new message from {}", sender);
-                log::debug!("Got {:x?}", msg);
-                if let Err(e) = osm.on_new_msg(sender, msg, &mut ev_queue) {
-                    log::error!("Consensus error: {}", e);
+                if let Err(e) = osm.on_new_msg(sender, msg) {
+                    error!("Consensus error: {}", e);
                 }
             }
-            phase = ev_queue.next() => {
+            phase = osm.ev_queue.next() => {
                 let ev = phase.unwrap();
-                if let Err(e) = osm.on_new_event(
-                    ev, 
-                    &mut ev_queue, 
-                ) {
+                if let Err(e) = osm.on_new_event(ev) {
                     log::error!("Consensus error: {}", e);
                 }
             }
-            phase = osm.leader_thread_receiver.recv() => {
-                let ev = phase.unwrap();
-                if let Err(e) = osm.on_new_event(
-                    Event::OptimizerEvent(ev), 
-                    &mut ev_queue,
-                ) 
-                {
-                    log::error!("Consensus error: {}", e);
-                }
+            msg_opt = cli_recv.recv() => {
+                println!("Got something from a client: {:?}", msg_opt);
             }
-            _msg_opt = cli_recv.recv() => {
-                println!("Got something from a client");
-            }
-            // sh = osm.sh_out.recv(), if not_stop => {
-            //     let share = sh
-            //         .expect("failed to get a share from the share thread");
-            //     osm.storage.round_shares.push_back(share);
-            //     if osm.storage.round_shares.len() > cx.num_nodes() {
-            //         not_stop = false;
-            //     }
-            // }
-            // verified_sh = osm.verified_shares.recv() => {
-            //     let (sender, share) = verified_sh.unwrap();
-            //     ev_queue.push_back(Event::NewVerifiedShare(sender, share));
-            // }
         }
     }
 }
-
-// fn spawn_share_thread(config: &Node) -> 
-//     (Receiver<PVSSVec>, VerifyReceiver) 
-// {
-//     let pvss_ctx = config.pvss_ctx.clone();
-//     let my_sk = config.get_secret_key();
-//     let (sh_in, sh_out) = channel(config.num_nodes*config.num_nodes);
-//     // This thread generates shares
-//     std::thread::spawn(move || {
-//         let mut rng = std_rng();
-//         loop {
-//             let new_share = pvss_ctx.generate_shares(&my_sk, &mut rng);
-//             // Testing
-//             // Delete after testing
-//             sh_in
-//                 .blocking_send(new_share)
-//                 .expect("Failed to send new shares");
-//         }
-//     });
-
-
-//     let pvss_ctx = config.pvss_ctx.clone();
-//     let pk_map = config.get_public_key_map();
-//     let (verified_sh_in, mut verified_sh_out) = channel::<(Replica, PVSSVec, oneshot::Sender<(Replica, PVSSVec)>)>(config.num_nodes*config.num_nodes);
-//     let myid = config.id;
-//     // This thread verifies shares
-//     std::thread::spawn(move || {
-//         // let mut rng = std_rng();
-//         // let mut pvss_ctx = pvss_ctx;
-//         // pvss_ctx.init(&mut rng);
-//         loop {
-//             let (sender, sh_to_verify, ch) = verified_sh_out.blocking_recv().unwrap();
-//             // My shares are always correct
-//             if sender == myid {
-//                 ch.send((sender, sh_to_verify)).unwrap();
-//                 continue;
-//             }
-//             if let Some(err) = pvss_ctx.verify_sharing(&sh_to_verify, &pk_map[&sender]) {
-//                 log::error!("Error when verifying share for {}: {:?}", sender, err);
-//                 continue;
-//             }
-//             ch.send((sender, sh_to_verify)).unwrap();
-//         }
-//     });
-//     (sh_out, verified_sh_in)
-// }

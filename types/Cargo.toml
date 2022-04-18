@@ -20,6 +20,7 @@ tokio-util = "0"
 reed-solomon-erasure = { version = "5" }
 crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
 openssl = "0"
+static_assertions = "1"
 
 [dependencies.types_upstream]
 package = "types"

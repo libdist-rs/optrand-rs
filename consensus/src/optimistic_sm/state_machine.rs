@@ -1,10 +1,11 @@
 use config::Node;
 use crypto::{rand::prelude::StdRng, std_rng};
 use crypto_lib::{Keypair, PublicKey};
+use tokio::sync::mpsc::UnboundedSender;
 use types::{Block, Certificate, DirectProposal, Epoch, MTAccumulatorBuilder, Replica, RespCertProposal, START_EPOCH, Storage, SyncCertProposal, Vote, reed_solomon_threshold};
 use fnv::FnvHashMap as HashMap;
 
-use crate::{ThreadReceiver, ThreadSender};
+use crate::{ev_queue::EventQueue, OutMsg};
 
 use super::{BeaconContext, LeaderContext, RoundContext};
 
@@ -24,10 +25,6 @@ pub struct OptRandStateMachine {
         Vote,
     ),
 
-    // pub(crate) share_generator: PvecReceiver,
-    pub(crate) leader_thread_sender: ThreadSender,
-    pub leader_thread_receiver: ThreadReceiver,
-
     /// Beacon PVSS Shares
     pub(crate) beacon_ctx: BeaconContext,
 
@@ -44,12 +41,15 @@ pub struct OptRandStateMachine {
 
     // Permanent storage
     pub(crate) storage: Storage,
+
+    // Event queue
+    pub(crate) ev_queue: EventQueue,
 }
 
 impl OptRandStateMachine {
     pub fn new(
         mut config: Node,
-        ch: (ThreadSender, ThreadReceiver),
+        net_send: UnboundedSender<OutMsg>,
     ) -> Self {
         let sk = config.get_secret_key();
         let pk_map = config.get_public_key_map();
@@ -75,7 +75,7 @@ impl OptRandStateMachine {
             .set_n(config.num_nodes)
             .set_f(f);
         let leader_ctx = LeaderContext::new(config.num_nodes);
-        
+        let ev_queue = EventQueue::with_capacity(100_000, net_send, &config);
         Self {
             config,
             epoch: START_EPOCH,
@@ -90,8 +90,7 @@ impl OptRandStateMachine {
             resp_cert_acc_builder,
             beacon_ctx: BeaconContext::default(),
             leader_ctx,
-            leader_thread_sender: ch.0,
-            leader_thread_receiver: ch.1,
+            ev_queue,
         }
     }
 

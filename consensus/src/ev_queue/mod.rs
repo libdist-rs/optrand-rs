@@ -1,17 +1,19 @@
-use std::{collections::VecDeque, task::{Poll, Context}, time::Duration, pin::Pin};
+use std::{collections::VecDeque, task::{Poll, Context}, time::Duration, pin::Pin, sync::Arc};
 
+use config::Node;
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::time::DelayQueue;
-use types::Epoch;
-use crate::{OutMsg, events::{Event, TimeOutEvent}};
+use types::{Replica, ProtocolMsg};
+use crate::{OutMsg, events::Event};
 
 pub(crate) struct EventQueue {
-    time_queue: DelayQueue<TimeOutEvent>,
+    time_queue: DelayQueue<Event>,
     ev_queue: VecDeque<Event>,
     net_send: UnboundedSender<OutMsg>,
-    _delta: u64,
-    root_time: tokio::time::Instant,
+    loopback_tx: VecDeque<ProtocolMsg>,
+    myid: Replica,
+    num_nodes: Replica,
 }
 
 impl Stream for EventQueue {
@@ -20,6 +22,9 @@ impl Stream for EventQueue {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) 
                                                 -> Poll<Option<Self::Item>> 
     {
+        if let Some(x) = self.loopback_tx.pop_front() {
+            return Poll::Ready(Some(Event::LoopBack(x)));
+        }
         if let Some(x) = self
             .ev_queue
             .pop_front() 
@@ -30,12 +35,12 @@ impl Stream for EventQueue {
             .time_queue
             .is_empty() 
         {
-            if let Poll::Ready(Some(Ok(x))) = 
+            if let Poll::Ready(Some(x)) = 
                 self
                     .time_queue
                     .poll_next_unpin(cx) 
             {
-                return Poll::Ready(Some(Event::TimeOut(x.into_inner())));
+                return Poll::Ready(Some(x.into_inner()));
             }
         }
         Poll::Pending
@@ -46,7 +51,7 @@ impl EventQueue {
     /// The size parameter defines the initial sizes for the event queue and the timer queue
     pub fn with_capacity(size: usize, 
         net_send: UnboundedSender<OutMsg>,
-        delta: u64,
+        config: &Node,
     ) 
     -> Self 
     {
@@ -54,38 +59,36 @@ impl EventQueue {
             time_queue: DelayQueue::with_capacity(size),
             ev_queue: VecDeque::with_capacity(size),
             net_send,
-            root_time: tokio::time::Instant::now(),
-            _delta: delta,
+            loopback_tx: VecDeque::default(),
+            myid: config.id,
+            num_nodes: config.num_nodes,
         }
     }
 
-    pub fn reset_root_time(&mut self) {
-        self.root_time = tokio::time::Instant::now();
-    }
+    // pub fn add_event(&mut self, ev: Event) {
+    //     self.ev_queue.push_back(ev);
+    // }
 
-    pub fn add_event(&mut self, ev: Event) {
-        self.ev_queue.push_back(ev);
-    }
+    // pub fn add_timeout(&mut self, 
+    //     ev: Event,
+    //     timeout: Duration,
+    // ) {
+    //     self.time_queue.insert(ev, 
+    //          timeout
+    //     );
+    // }
 
-    pub fn add_timeout(&mut self, 
-        tev: TimeOutEvent, 
-        timeout: Duration, 
-        _e: Epoch,
-    ) {
-        self.time_queue.insert(tev, 
-            // self.root_time 
-            // + std::time::Duration::from_millis(11*(e as u64 - 1)*self.delta) +
-             timeout
-        );
-    }
-
-    pub(crate) fn _events_queue(&mut self) -> &mut VecDeque<Event> {
-        &mut self.ev_queue
-    }
-
-    pub(crate) fn send_msg(&self, msg: OutMsg) 
+    pub(crate) fn send_msg(&mut self, dest: Replica, msg: ProtocolMsg) 
     {
-        if let Err(e) = self.net_send.send(msg) {
+        if dest == self.myid || dest == self.num_nodes {
+            self
+                .loopback_tx
+                .push_back(msg.clone());
+        }
+        let err = self
+            .net_send
+            .send((dest,Arc::new(msg)));
+        if let Err(e) = err {
             log::error!("Error sending message: {}", e);
         }
     }
