@@ -1,0 +1,410 @@
+
+running 7 tests
+test test::ctx_tests::test_gen ... ignored
+test test::dbs_tests::agg_test ... ignored
+test test::dbs_tests::decryption_test ... ignored
+test test::dbs_tests::gen_test ... ignored
+test test::dbs_tests::test_reconstruction ... ignored
+test test::dleq_tests::test_dleq ... ignored
+test test::keypair_tests::test_gen ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+WARNING: HTML report generation will become a non-default optional feature in Criterion.rs 0.4.0.
+This feature is being moved to cargo-criterion (https://github.com/bheisler/cargo-criterion) and will be optional in a future version of Criterion.rs. To silence this warning, either switch to cargo-criterion or enable the 'html_reports' feature in your Cargo.toml.
+
+Gnuplot not found, using plotters backend
+Benchmarking pvss_generation/3
+Benchmarking pvss_generation/3: Warming up for 3.0000 s
+Benchmarking pvss_generation/3: Collecting 10 samples in estimated 5.0493 s (820 iterations)
+Benchmarking pvss_generation/3: Analyzing
+pvss_generation/3       time:   [6.0893 ms 6.1160 ms 6.1373 ms]
+                        thrpt:  [488.82   B/s 490.51   B/s 492.66   B/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+Benchmarking pvss_generation/10
+Benchmarking pvss_generation/10: Warming up for 3.0000 s
+Benchmarking pvss_generation/10: Collecting 10 samples in estimated 5.0838 s (250 iterations)
+Benchmarking pvss_generation/10: Analyzing
+pvss_generation/10      time:   [20.286 ms 20.339 ms 20.393 ms]
+                        thrpt:  [490.36   B/s 491.68   B/s 492.95   B/s]
+Benchmarking pvss_generation/20
+Benchmarking pvss_generation/20: Warming up for 3.0000 s
+Benchmarking pvss_generation/20: Collecting 10 samples in estimated 5.2837 s (130 iterations)
+Benchmarking pvss_generation/20: Analyzing
+pvss_generation/20      time:   [40.622 ms 41.097 ms 41.757 ms]
+                        thrpt:  [478.96   B/s 486.66   B/s 492.34   B/s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) high mild
+  1 (10.00%) high severe
+Benchmarking pvss_generation/30
+Benchmarking pvss_generation/30: Warming up for 3.0000 s
+Benchmarking pvss_generation/30: Collecting 10 samples in estimated 5.5060 s (90 iterations)
+Benchmarking pvss_generation/30: Analyzing
+pvss_generation/30      time:   [60.946 ms 61.111 ms 61.252 ms]
+                        thrpt:  [489.78   B/s 490.91   B/s 492.24   B/s]
+Benchmarking pvss_generation/50
+Benchmarking pvss_generation/50: Warming up for 3.0000 s
+Benchmarking pvss_generation/50: Collecting 10 samples in estimated 5.2226 s (50 iterations)
+Benchmarking pvss_generation/50: Analyzing
+pvss_generation/50      time:   [103.82 ms 104.20 ms 104.54 ms]
+                        thrpt:  [478.31   B/s 479.85   B/s 481.60   B/s]
+Benchmarking pvss_generation/75
+Benchmarking pvss_generation/75: Warming up for 3.0000 s
+Benchmarking pvss_generation/75: Collecting 10 samples in estimated 6.2333 s (40 iterations)
+Benchmarking pvss_generation/75: Analyzing
+pvss_generation/75      time:   [156.44 ms 156.69 ms 156.93 ms]
+                        thrpt:  [477.92   B/s 478.66   B/s 479.43   B/s]
+Benchmarking pvss_generation/100
+Benchmarking pvss_generation/100: Warming up for 3.0000 s
+Benchmarking pvss_generation/100: Collecting 10 samples in estimated 6.2403 s (30 iterations)
+Benchmarking pvss_generation/100: Analyzing
+pvss_generation/100     time:   [207.76 ms 208.36 ms 208.99 ms]
+                        thrpt:  [478.50   B/s 479.93   B/s 481.33   B/s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low mild
+  1 (10.00%) high mild
+
+Benchmarking pvss_verification/3
+Benchmarking pvss_verification/3: Warming up for 3.0000 s
+Benchmarking pvss_verification/3: Collecting 10 samples in estimated 5.0604 s (610 iterations)
+Benchmarking pvss_verification/3: Analyzing
+pvss_verification/3     time:   [8.2394 ms 8.2599 ms 8.2803 ms]
+                        thrpt:  [362.30   B/s 363.20   B/s 364.10   B/s]
+Benchmarking pvss_verification/10
+Benchmarking pvss_verification/10: Warming up for 3.0000 s
+Benchmarking pvss_verification/10: Collecting 10 samples in estimated 5.2186 s (190 iterations)
+Benchmarking pvss_verification/10: Analyzing
+pvss_verification/10    time:   [27.300 ms 27.363 ms 27.436 ms]
+                        thrpt:  [364.49   B/s 365.45   B/s 366.30   B/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking pvss_verification/20
+Benchmarking pvss_verification/20: Warming up for 3.0000 s
+Benchmarking pvss_verification/20: Collecting 10 samples in estimated 5.5412 s (100 iterations)
+Benchmarking pvss_verification/20: Analyzing
+pvss_verification/20    time:   [55.338 ms 55.455 ms 55.578 ms]
+                        thrpt:  [359.85   B/s 360.65   B/s 361.42   B/s]
+Benchmarking pvss_verification/30
+Benchmarking pvss_verification/30: Warming up for 3.0000 s
+Benchmarking pvss_verification/30: Collecting 10 samples in estimated 5.7732 s (70 iterations)
+Benchmarking pvss_verification/30: Analyzing
+pvss_verification/30    time:   [82.260 ms 82.442 ms 82.623 ms]
+                        thrpt:  [363.10   B/s 363.89   B/s 364.70   B/s]
+Benchmarking pvss_verification/50
+Benchmarking pvss_verification/50: Warming up for 3.0000 s
+Benchmarking pvss_verification/50: Collecting 10 samples in estimated 5.5600 s (40 iterations)
+Benchmarking pvss_verification/50: Analyzing
+pvss_verification/50    time:   [138.69 ms 138.95 ms 139.17 ms]
+                        thrpt:  [359.26   B/s 359.84   B/s 360.51   B/s]
+Benchmarking pvss_verification/75
+Benchmarking pvss_verification/75: Warming up for 3.0000 s
+Benchmarking pvss_verification/75: Collecting 10 samples in estimated 6.2342 s (30 iterations)
+Benchmarking pvss_verification/75: Analyzing
+pvss_verification/75    time:   [207.44 ms 207.81 ms 208.19 ms]
+                        thrpt:  [360.25   B/s 360.90   B/s 361.56   B/s]
+Benchmarking pvss_verification/100
+Benchmarking pvss_verification/100: Warming up for 3.0000 s
+Benchmarking pvss_verification/100: Collecting 10 samples in estimated 5.5568 s (20 iterations)
+Benchmarking pvss_verification/100: Analyzing
+pvss_verification/100   time:   [276.20 ms 276.77 ms 277.34 ms]
+                        thrpt:  [360.57   B/s 361.31   B/s 362.05   B/s]
+
+Benchmarking pvss_aggregation/3
+Benchmarking pvss_aggregation/3: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/3: Collecting 10 samples in estimated 5.0003 s (62k iterations)
+Benchmarking pvss_aggregation/3: Analyzing
+pvss_aggregation/3      time:   [80.087 us 80.358 us 80.611 us]
+                        thrpt:  [36.344 KiB/s 36.458 KiB/s 36.581 KiB/s]
+Benchmarking pvss_aggregation/10
+Benchmarking pvss_aggregation/10: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/10: Collecting 10 samples in estimated 5.0113 s (3780 iterations)
+Benchmarking pvss_aggregation/10: Analyzing
+pvss_aggregation/10     time:   [1.3275 ms 1.3311 ms 1.3345 ms]
+                        thrpt:  [7.3179 KiB/s 7.3367 KiB/s 7.3567 KiB/s]
+Benchmarking pvss_aggregation/20
+Benchmarking pvss_aggregation/20: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/20: Collecting 10 samples in estimated 5.0578 s (860 iterations)
+Benchmarking pvss_aggregation/20: Analyzing
+pvss_aggregation/20     time:   [5.8502 ms 5.8828 ms 5.9083 ms]
+                        thrpt:  [3.3057 KiB/s 3.3201 KiB/s 3.3385 KiB/s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low severe
+  1 (10.00%) low mild
+Benchmarking pvss_aggregation/30
+Benchmarking pvss_aggregation/30: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/30: Collecting 10 samples in estimated 5.0786 s (370 iterations)
+Benchmarking pvss_aggregation/30: Analyzing
+pvss_aggregation/30     time:   [13.576 ms 13.612 ms 13.655 ms]
+                        thrpt:  [2.1454 KiB/s 2.1522 KiB/s 2.1580 KiB/s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) high mild
+  1 (10.00%) high severe
+Benchmarking pvss_aggregation/50
+Benchmarking pvss_aggregation/50: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/50: Collecting 10 samples in estimated 5.1060 s (130 iterations)
+Benchmarking pvss_aggregation/50: Analyzing
+pvss_aggregation/50     time:   [39.189 ms 39.288 ms 39.373 ms]
+                        thrpt:  [1.2401 KiB/s 1.2428 KiB/s 1.2460 KiB/s]
+Benchmarking pvss_aggregation/75
+Benchmarking pvss_aggregation/75: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/75: Collecting 10 samples in estimated 5.4694 s (60 iterations)
+Benchmarking pvss_aggregation/75: Analyzing
+pvss_aggregation/75     time:   [91.265 ms 91.431 ms 91.600 ms]
+                        thrpt:  [818.78   B/s 820.29   B/s 821.78   B/s]
+Benchmarking pvss_aggregation/100
+Benchmarking pvss_aggregation/100: Warming up for 3.0000 s
+Benchmarking pvss_aggregation/100: Collecting 10 samples in estimated 6.5174 s (40 iterations)
+Benchmarking pvss_aggregation/100: Analyzing
+pvss_aggregation/100    time:   [162.32 ms 162.71 ms 163.10 ms]
+                        thrpt:  [613.12   B/s 614.60   B/s 616.09   B/s]
+
+Benchmarking pvss_pverify/3
+Benchmarking pvss_pverify/3: Warming up for 3.0000 s
+Benchmarking pvss_pverify/3: Collecting 10 samples in estimated 5.0906 s (530 iterations)
+Benchmarking pvss_pverify/3: Analyzing
+pvss_pverify/3          time:   [9.5087 ms 9.5409 ms 9.5683 ms]
+                        thrpt:  [313.53   B/s 314.44   B/s 315.50   B/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+Benchmarking pvss_pverify/10
+Benchmarking pvss_pverify/10: Warming up for 3.0000 s
+Benchmarking pvss_pverify/10: Collecting 10 samples in estimated 5.2144 s (130 iterations)
+Benchmarking pvss_pverify/10: Analyzing
+pvss_pverify/10         time:   [40.141 ms 40.221 ms 40.298 ms]
+                        thrpt:  [248.15   B/s 248.62   B/s 249.12   B/s]
+Benchmarking pvss_pverify/20
+Benchmarking pvss_pverify/20: Warming up for 3.0000 s
+Benchmarking pvss_pverify/20: Collecting 10 samples in estimated 5.0667 s (60 iterations)
+Benchmarking pvss_pverify/20: Analyzing
+pvss_pverify/20         time:   [84.231 ms 84.368 ms 84.518 ms]
+                        thrpt:  [236.64   B/s 237.06   B/s 237.44   B/s]
+Benchmarking pvss_pverify/30
+Benchmarking pvss_pverify/30: Warming up for 3.0000 s
+Benchmarking pvss_pverify/30: Collecting 10 samples in estimated 5.1068 s (40 iterations)
+Benchmarking pvss_pverify/30: Analyzing
+pvss_pverify/30         time:   [127.45 ms 127.74 ms 128.02 ms]
+                        thrpt:  [234.33   B/s 234.85   B/s 235.38   B/s]
+Benchmarking pvss_pverify/50
+Benchmarking pvss_pverify/50: Warming up for 3.0000 s
+Benchmarking pvss_pverify/50: Collecting 10 samples in estimated 6.4927 s (30 iterations)
+Benchmarking pvss_pverify/50: Analyzing
+pvss_pverify/50         time:   [214.97 ms 215.45 ms 215.93 ms]
+                        thrpt:  [231.55   B/s 232.07   B/s 232.59   B/s]
+Benchmarking pvss_pverify/75
+Benchmarking pvss_pverify/75: Warming up for 3.0000 s
+Benchmarking pvss_pverify/75: Collecting 10 samples in estimated 6.5058 s (20 iterations)
+Benchmarking pvss_pverify/75: Analyzing
+pvss_pverify/75         time:   [324.95 ms 325.73 ms 326.45 ms]
+                        thrpt:  [229.75   B/s 230.26   B/s 230.80   B/s]
+Benchmarking pvss_pverify/100
+Benchmarking pvss_pverify/100: Warming up for 3.0000 s
+Benchmarking pvss_pverify/100: Collecting 10 samples in estimated 8.6934 s (20 iterations)
+Benchmarking pvss_pverify/100: Analyzing
+pvss_pverify/100        time:   [434.07 ms 435.04 ms 435.97 ms]
+                        thrpt:  [229.38   B/s 229.87   B/s 230.38   B/s]
+
+Benchmarking pvss_decomposition_verify/3
+Benchmarking pvss_decomposition_verify/3: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/3: Collecting 10 samples in estimated 5.0024 s (1220 iterations)
+Benchmarking pvss_decomposition_verify/3: Analyzing
+pvss_decomposition_verify/3
+                        time:   [4.0971 ms 4.1020 ms 4.1068 ms]
+                        thrpt:  [730.50   B/s 731.34   B/s 732.23   B/s]
+Benchmarking pvss_decomposition_verify/10
+Benchmarking pvss_decomposition_verify/10: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/10: Collecting 10 samples in estimated 5.0448 s (490 iterations)
+Benchmarking pvss_decomposition_verify/10: Analyzing
+pvss_decomposition_verify/10
+                        time:   [10.269 ms 10.298 ms 10.327 ms]
+                        thrpt:  [968.33   B/s 971.02   B/s 973.77   B/s]
+Benchmarking pvss_decomposition_verify/20
+Benchmarking pvss_decomposition_verify/20: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/20: Collecting 10 samples in estimated 5.0058 s (240 iterations)
+Benchmarking pvss_decomposition_verify/20: Analyzing
+pvss_decomposition_verify/20
+                        time:   [20.784 ms 20.835 ms 20.886 ms]
+                        thrpt:  [957.59   B/s 959.90   B/s 962.26   B/s]
+Benchmarking pvss_decomposition_verify/30
+Benchmarking pvss_decomposition_verify/30: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/30: Collecting 10 samples in estimated 5.2274 s (170 iterations)
+Benchmarking pvss_decomposition_verify/30: Analyzing
+pvss_decomposition_verify/30
+                        time:   [30.604 ms 30.686 ms 30.777 ms]
+                        thrpt:  [974.76   B/s 977.65   B/s 980.26   B/s]
+Benchmarking pvss_decomposition_verify/50
+Benchmarking pvss_decomposition_verify/50: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/50: Collecting 10 samples in estimated 5.1651 s (100 iterations)
+Benchmarking pvss_decomposition_verify/50: Analyzing
+pvss_decomposition_verify/50
+                        time:   [51.815 ms 51.942 ms 52.063 ms]
+                        thrpt:  [960.38   B/s 962.61   B/s 964.98   B/s]
+Benchmarking pvss_decomposition_verify/75
+Benchmarking pvss_decomposition_verify/75: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/75: Collecting 10 samples in estimated 5.4992 s (70 iterations)
+Benchmarking pvss_decomposition_verify/75: Analyzing
+pvss_decomposition_verify/75
+                        time:   [78.195 ms 78.442 ms 78.675 ms]
+                        thrpt:  [953.29   B/s 956.12   B/s 959.14   B/s]
+Benchmarking pvss_decomposition_verify/100
+Benchmarking pvss_decomposition_verify/100: Warming up for 3.0000 s
+Benchmarking pvss_decomposition_verify/100: Collecting 10 samples in estimated 5.1392 s (50 iterations)
+Benchmarking pvss_decomposition_verify/100: Analyzing
+pvss_decomposition_verify/100
+                        time:   [102.18 ms 102.41 ms 102.63 ms]
+                        thrpt:  [974.41   B/s 976.51   B/s 978.63   B/s]
+
+Benchmarking pvss_decryption/3
+Benchmarking pvss_decryption/3: Warming up for 3.0000 s
+Benchmarking pvss_decryption/3: Collecting 10 samples in estimated 5.0076 s (6330 iterations)
+Benchmarking pvss_decryption/3: Analyzing
+pvss_decryption/3       time:   [791.17 us 792.34 us 793.47 us]
+                        thrpt:  [3.6923 KiB/s 3.6975 KiB/s 3.7030 KiB/s]
+Benchmarking pvss_decryption/10
+Benchmarking pvss_decryption/10: Warming up for 3.0000 s
+Benchmarking pvss_decryption/10: Collecting 10 samples in estimated 5.0003 s (6330 iterations)
+Benchmarking pvss_decryption/10: Analyzing
+pvss_decryption/10      time:   [788.31 us 791.17 us 793.75 us]
+                        thrpt:  [12.303 KiB/s 12.343 KiB/s 12.388 KiB/s]
+Benchmarking pvss_decryption/20
+Benchmarking pvss_decryption/20: Warming up for 3.0000 s
+Benchmarking pvss_decryption/20: Collecting 10 samples in estimated 5.0047 s (6310 iterations)
+Benchmarking pvss_decryption/20: Analyzing
+pvss_decryption/20      time:   [785.73 us 788.88 us 792.01 us]
+                        thrpt:  [24.660 KiB/s 24.758 KiB/s 24.858 KiB/s]
+Benchmarking pvss_decryption/30
+Benchmarking pvss_decryption/30: Warming up for 3.0000 s
+Benchmarking pvss_decryption/30: Collecting 10 samples in estimated 5.0067 s (6290 iterations)
+Benchmarking pvss_decryption/30: Analyzing
+pvss_decryption/30      time:   [791.04 us 792.51 us 793.90 us]
+                        thrpt:  [36.902 KiB/s 36.967 KiB/s 37.036 KiB/s]
+Benchmarking pvss_decryption/50
+Benchmarking pvss_decryption/50: Warming up for 3.0000 s
+Benchmarking pvss_decryption/50: Collecting 10 samples in estimated 5.0013 s (6320 iterations)
+Benchmarking pvss_decryption/50: Analyzing
+pvss_decryption/50      time:   [792.58 us 794.33 us 796.03 us]
+                        thrpt:  [61.340 KiB/s 61.471 KiB/s 61.606 KiB/s]
+Benchmarking pvss_decryption/75
+Benchmarking pvss_decryption/75: Warming up for 3.0000 s
+Benchmarking pvss_decryption/75: Collecting 10 samples in estimated 5.0038 s (6320 iterations)
+Benchmarking pvss_decryption/75: Analyzing
+pvss_decryption/75      time:   [792.70 us 793.89 us 795.17 us]
+                        thrpt:  [92.109 KiB/s 92.257 KiB/s 92.396 KiB/s]
+Benchmarking pvss_decryption/100
+Benchmarking pvss_decryption/100: Warming up for 3.0000 s
+Benchmarking pvss_decryption/100: Collecting 10 samples in estimated 5.0061 s (6330 iterations)
+Benchmarking pvss_decryption/100: Analyzing
+pvss_decryption/100     time:   [790.99 us 792.91 us 794.82 us]
+                        thrpt:  [122.87 KiB/s 123.16 KiB/s 123.46 KiB/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking pvss_decryption_verify/3
+Benchmarking pvss_decryption_verify/3: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/3: Collecting 10 samples in estimated 5.0090 s (4900 iterations)
+Benchmarking pvss_decryption_verify/3: Analyzing
+pvss_decryption_verify/3
+                        time:   [1.0206 ms 1.0232 ms 1.0257 ms]
+                        thrpt:  [2.8562 KiB/s 2.8633 KiB/s 2.8705 KiB/s]
+Benchmarking pvss_decryption_verify/10
+Benchmarking pvss_decryption_verify/10: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/10: Collecting 10 samples in estimated 5.0016 s (4720 iterations)
+Benchmarking pvss_decryption_verify/10: Analyzing
+pvss_decryption_verify/10
+                        time:   [1.0545 ms 1.0578 ms 1.0611 ms]
+                        thrpt:  [9.2036 KiB/s 9.2324 KiB/s 9.2611 KiB/s]
+Benchmarking pvss_decryption_verify/20
+Benchmarking pvss_decryption_verify/20: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/20: Collecting 10 samples in estimated 5.0029 s (4700 iterations)
+Benchmarking pvss_decryption_verify/20: Analyzing
+pvss_decryption_verify/20
+                        time:   [1.0610 ms 1.0630 ms 1.0650 ms]
+                        thrpt:  [18.338 KiB/s 18.374 KiB/s 18.408 KiB/s]
+Benchmarking pvss_decryption_verify/30
+Benchmarking pvss_decryption_verify/30: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/30: Collecting 10 samples in estimated 5.0040 s (4440 iterations)
+Benchmarking pvss_decryption_verify/30: Analyzing
+pvss_decryption_verify/30
+                        time:   [1.1265 ms 1.1301 ms 1.1333 ms]
+                        thrpt:  [25.851 KiB/s 25.925 KiB/s 26.008 KiB/s]
+Benchmarking pvss_decryption_verify/50
+Benchmarking pvss_decryption_verify/50: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/50: Collecting 10 samples in estimated 5.0096 s (4280 iterations)
+Benchmarking pvss_decryption_verify/50: Analyzing
+pvss_decryption_verify/50
+                        time:   [1.1659 ms 1.1694 ms 1.1729 ms]
+                        thrpt:  [41.629 KiB/s 41.754 KiB/s 41.879 KiB/s]
+Benchmarking pvss_decryption_verify/75
+Benchmarking pvss_decryption_verify/75: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/75: Collecting 10 samples in estimated 5.0098 s (3940 iterations)
+Benchmarking pvss_decryption_verify/75: Analyzing
+pvss_decryption_verify/75
+                        time:   [1.2740 ms 1.2772 ms 1.2800 ms]
+                        thrpt:  [57.220 KiB/s 57.347 KiB/s 57.488 KiB/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+Benchmarking pvss_decryption_verify/100
+Benchmarking pvss_decryption_verify/100: Warming up for 3.0000 s
+Benchmarking pvss_decryption_verify/100: Collecting 10 samples in estimated 5.0034 s (3800 iterations)
+Benchmarking pvss_decryption_verify/100: Analyzing
+pvss_decryption_verify/100
+                        time:   [1.3128 ms 1.3165 ms 1.3201 ms]
+                        thrpt:  [73.974 KiB/s 74.178 KiB/s 74.389 KiB/s]
+
+Benchmarking pvss_reconstruction/3
+Benchmarking pvss_reconstruction/3: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/3: Collecting 10 samples in estimated 5.0022 s (2330 iterations)
+Benchmarking pvss_reconstruction/3: Analyzing
+pvss_reconstruction/3   time:   [2.1392 ms 2.1446 ms 2.1493 ms]
+                        thrpt:  [1.3631 KiB/s 1.3661 KiB/s 1.3695 KiB/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+Benchmarking pvss_reconstruction/10
+Benchmarking pvss_reconstruction/10: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/10: Collecting 10 samples in estimated 5.0169 s (2060 iterations)
+Benchmarking pvss_reconstruction/10: Analyzing
+pvss_reconstruction/10  time:   [2.4277 ms 2.4369 ms 2.4454 ms]
+                        thrpt:  [3.9934 KiB/s 4.0074 KiB/s 4.0226 KiB/s]
+Benchmarking pvss_reconstruction/20
+Benchmarking pvss_reconstruction/20: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/20: Collecting 10 samples in estimated 5.0321 s (1520 iterations)
+Benchmarking pvss_reconstruction/20: Analyzing
+pvss_reconstruction/20  time:   [3.3287 ms 3.3338 ms 3.3380 ms]
+                        thrpt:  [5.8512 KiB/s 5.8585 KiB/s 5.8676 KiB/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+Benchmarking pvss_reconstruction/30
+Benchmarking pvss_reconstruction/30: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/30: Collecting 10 samples in estimated 5.0329 s (1260 iterations)
+Benchmarking pvss_reconstruction/30: Analyzing
+pvss_reconstruction/30  time:   [3.9798 ms 3.9884 ms 3.9955 ms]
+                        thrpt:  [7.3325 KiB/s 7.3455 KiB/s 7.3614 KiB/s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low severe
+  1 (10.00%) low mild
+Benchmarking pvss_reconstruction/50
+Benchmarking pvss_reconstruction/50: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/50: Collecting 10 samples in estimated 5.0055 s (880 iterations)
+Benchmarking pvss_reconstruction/50: Analyzing
+pvss_reconstruction/50  time:   [5.6960 ms 5.7080 ms 5.7194 ms]
+                        thrpt:  [8.5373 KiB/s 8.5543 KiB/s 8.5724 KiB/s]
+Benchmarking pvss_reconstruction/75
+Benchmarking pvss_reconstruction/75: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/75: Collecting 10 samples in estimated 5.0196 s (600 iterations)
+Benchmarking pvss_reconstruction/75: Analyzing
+pvss_reconstruction/75  time:   [8.3674 ms 8.4192 ms 8.4951 ms]
+                        thrpt:  [8.6217 KiB/s 8.6994 KiB/s 8.7533 KiB/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+Benchmarking pvss_reconstruction/100
+Benchmarking pvss_reconstruction/100: Warming up for 3.0000 s
+Benchmarking pvss_reconstruction/100: Collecting 10 samples in estimated 5.0712 s (450 iterations)
+Benchmarking pvss_reconstruction/100: Analyzing
+pvss_reconstruction/100 time:   [11.252 ms 11.291 ms 11.330 ms]
+                        thrpt:  [8.6195 KiB/s 8.6491 KiB/s 8.6788 KiB/s]
+

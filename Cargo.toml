@@ -1,0 +1,22 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [
+    "types",
+    "config",
+    "crypto",
+    "consensus",
+#    "sync_main",
+    "opt_main",
+
+    # "reconfig-client"
+]
+
+# This is just a collection of packages that builds Optrand
+
+# Hey, we want the best performance!
+# [profile.release]
+# lto = "fat"
+# debug = true
+# codegen-units = 1
+# panic = "abort"

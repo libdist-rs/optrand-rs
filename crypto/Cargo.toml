@@ -1,0 +1,96 @@
+[package]
+name = "crypto"
+version = "0.1.1"
+authors = ["hermitsage <dth.bht@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8"
+sha2 = "0.9"
+serde = {version = "1", features = [ "derive" ] }
+bincode = "1"
+ark-serialize = { version = "0.3", default-features = true }
+ark-serialize-derive = "0.3"
+ark-ff = { version = "0.3", features = ["asm"] }
+ark-ec = { version = "0.3", features = ["parallel"] }
+ark-poly = { version = "0.3", default-features = true }
+
+ark-std = { version = "0.3", default-features = true }
+fnv = "1"
+derive_builder = "0"
+log = "0"
+
+# Curves
+
+# BLS12-381 and embedded curves
+
+#     ark-bls12-381: Implements the BLS12-381 pairing-friendly curve
+ark-bls12-381 = { version = "0.3", default-features = true }
+#     ark-ed-on-bls12-381: Implements a Twisted Edwards curve atop the scalar field of BLS12-381
+ark-ed-on-bls12-381 = "0"
+#     ark-ed-on-bls12-381-bandersnatch: Implements Bandersnatch, another Twisted Edwards curve atop the scalar field of BLS12-381
+bandersnatch = "0"
+# BLS12-377 and related curves
+
+#     ark-bls12-377: Implements the BLS12-377 pairing-friendly curve
+ark-bls12-377 = "0"
+#     ark-ed-on-bls12-377: Implements a Twisted Edwards curve atop the scalar field of BLS12-377
+ark-ed-on-bls12-377 = "0"
+#     ark-bw6-761: Implements the BW6-761 pairing-friendly curve, which is a curve whose scalar field equals the base field of BLS12-377
+ark-bw6-761 = "0"
+#     ark-ed-on-bw6-761: Implements a Twisted Edwards curve atop the scalar field of BW6-761
+ark-ed-on-bw6-761 = "0"
+#     ark-cp6-782: Implements the CP6-782 pairing-friendly curve, which is a curve whose scalar field equals the base field of BLS12-377
+ark-cp6-782 = "0"
+#     ark-ed-on-cp6-782: Implements a Twisted Edwards curve atop the scalar field of CP6-782. This is the same curve as in ark-ed-on-bw6-761
+ark-ed-on-cp6-782 = "0"
+# BN254 and related curves
+
+#     ark-bn254: Implements the BN254 pairing-friendly curve
+ark-bn254 = "0"
+#     ark-ed-on-bn254: Implements a Twisted Edwards curve atop the scalar field of BN254
+ark-ed-on-bn254 = "0"
+# MNT-298 cycle of curves and related curves
+
+#     ark-mnt4-298: Implements the MNT4-298 pairing-friendly curve. This curve forms a pairing-friendly cycle with MNT6-298
+ark-mnt4-298 = "0"
+#     ark-mnt6-298: Implements the MNT6-298 pairing-friendly curve. This curve forms a pairing-friendly cycle with MNT4-298
+ark-mnt6-298 = "0"
+#     ark-ed-on-mnt4-298: Implements a Twisted Edwards curve atop the scalar field of MNT4-298
+ark-ed-on-mnt4-298 = "0"
+
+# MNT-753 cycle of curves and related curves
+
+#     ark-mnt4-753: Implements the MNT4-753 pairing-friendly curve. This curve forms a pairing-friendly cycle with MNT6-753
+ark-mnt4-753 = "0"
+#     ark-mnt6-753: Implements the MNT6-753 pairing-friendly curve. This curve forms a pairing-friendly cycle with MNT4-753
+ark-mnt6-753 = "0"
+#     ark-ed-on-mnt4-753: Implements a Twisted Edwards curve atop the scalar field of MNT4-753
+ark-ed-on-mnt4-753 = "0"
+
+# Pasta cycle of curves
+
+#     ark-pallas: Implements Pallas, a prime-order curve that forms an amicable pair with Vesta
+ark-pallas = "0"
+#     ark-vesta: Implements Vesta, a prime-order curve that forms an amicable pair with Pallas
+ark-vesta = "0"
+
+crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
+
+[dev-dependencies.criterion]
+package = "criterion"
+version = "0.3"
+features = ["html_reports"]
+# criterion = {package="criterion", version = "0.3" , features = ["html-report"]}
+[dev-dependencies]
+bencher = "0"
+
+[[bench]]
+name = "bench_pvss"
+harness = false
+
+[[bench]]
+name = "quick_test"
+harness = false

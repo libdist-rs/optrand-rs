@@ -1,0 +1,14 @@
+Direct Proposal size for 5: 1808
+Direct Proposal size for 10: 2528
+Direct Proposal size for 20: 3968
+Direct Proposal size for 30: 5408
+Direct Proposal size for 50: 8288
+Direct Proposal size for 75: 11888
+Direct Proposal size for 100: 15488
+Status size for 5: 2552
+Status size for 10: 2712
+Status size for 20: 3112
+Status size for 30: 3512
+Status size for 50: 4312
+Status size for 75: 5352
+Status size for 100: 6312

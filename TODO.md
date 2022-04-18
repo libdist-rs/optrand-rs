@@ -1,0 +1,22 @@
+# Missing Optimizations
+
+- [ ] Implement Synchronous OptRand
+    - [ ] Implement Aggregate PVSS Buffering Optimization
+        - [ ] Update configs
+        - [ ] Update storage based on configs
+        - [ ] Add a Share Verifier thread
+        - [ ] Check if everything works
+    - [ ] Implement Beacons
+        - [x] Process Shares
+        - [ ] Output Beacons
+- [ ] Implement Optimistic OptRand
+    - [ ] Send Responsive Vote
+    - [ ] Verify Responsive Vote
+    - [ ] Handle Responsive Vote (Send Resp Cert)
+    - [ ] Verify Resp Cert
+    - [ ] Handle Resp Cert (Send Ack + Deliver)
+    - [ ] Verify DeliverResp Cert
+    - [ ] Handle DeliverResp Cert
+    - [ ] Verify Ack
+    - [ ] Handle Ack
+- Implement Reconfiguration

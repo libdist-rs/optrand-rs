@@ -1,0 +1,26 @@
+[package]
+name = "types"
+version = "0.1.1"
+authors = ["Adithya Bhat <dth.bht@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1"
+crypto = {package = "crypto", path = "../crypto"}
+bytes = "1"
+fnv="1"
+log = "0"
+ark-bls12-381 = { version = "0.3", default-features = true }
+derivative = "2"
+derive_builder = "0"
+tokio-util = "0"
+reed-solomon-erasure = { version = "5" }
+crypto_lib = {package = "crypto", git = "https://github.com/adithyabhatkajake/libchatter-rs"}
+openssl = "0"
+
+[dependencies.types_upstream]
+package = "types"
+git="https://github.com/adithyabhatkajake/libchatter-rs"

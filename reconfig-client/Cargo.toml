@@ -1,0 +1,21 @@
+[package]
+name = "reconfig-client"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2"
+config = {package = "config", path = "../config"}
+tokio = "1"
+util = {package = "util", path = "../util"}
+consensus = {package = "consensus", path = "../consensus"}
+types = {package = "types", path = "../types"}
+
+simple_logger = "1"
+log = "0"
+
+[dependencies.net]
+package = "net"
+git = "https://github.com/adithyabhatkajake/libchatter-rs"
